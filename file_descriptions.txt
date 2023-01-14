@@ -1,0 +1,18 @@
+A4_list ~ 5kB
+perm_list ~ 5kB
+I ~ 1mB
+O ~ 69kB
+IO ~ 500kB
+
+C3 ~ 384mB
+Phase1 ~ 198mB
+Phase2 ~ 800mB
+Phase3 ~ 42mB
+
+
+
+mode 1:
+- lazy_static generate LUTs and save to file
+
+mode 2:
+- LUT files are baked into binary

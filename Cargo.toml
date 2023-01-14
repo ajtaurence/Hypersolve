@@ -1,0 +1,18 @@
+[package]
+name = "hypersolve"
+version = "0.1.0"
+edition = "2021"
+description = "3-Phase 2^4 Rubik's cube solver"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bytemuck = "1.12"
+lazy_static = "1.4.0"
+enum-primitive-derive = "0.2.2"
+itertools = "0.10.5"
+num-traits = "^0.1"
+
+[features]
+default = ["gen-small-tables"]
+gen-small-tables = []
