@@ -1,22 +1,73 @@
-#[cfg(feature = "gen-small-tables")]
-macro_rules! const_lookup_table {
-    ($name:ident: $type:ty = ($file:tt, $func:expr)) => {
+/* Static Data Example
+const_data!(
+    pub TEST_DATA: PiecePuzzle = complex_runtime_calculation()
+);
+*/
+
+/// Generates lazy static data at runtime and saves to a file
+#[cfg(debug_assertions)]
+macro_rules! const_data {
+    (pub $name:ident: $type:ty = $expr:expr) => {
         lazy_static::lazy_static! {
-            static ref $name: $type = {
+            pub static ref $name: $type = {
+                union Transmute {
+                    bytes: [u8; {std::mem::size_of::<$type>()}],
+                    obj: $type
+                }
+
                 use std::io::Write;
 
-                let result = ($func)();
-                let mut file = std::fs::File::create(concat!("luts/", $file)).expect("unable to write lookup table");
-                file.write_all(bytemuck::cast_slice(result)).expect("unable to write lookup table");
-                result
+                let data = $expr;
+                let mut file = std::fs::File::create(concat!("static_data/", concat!(stringify!($name), ".dat"))).expect("unable to write static data");
+                file.write_all(& unsafe { Transmute { obj: $expr }.bytes }).expect("unable to write static data");
+                data
+            };
+        }
+    };
+    ($name:ident: $type:ty = $expr:expr) => {
+        lazy_static::lazy_static! {
+            static ref $name: $type = {
+                union Transmute {
+                    bytes: [u8; {std::mem::size_of::<$type>()}],
+                    obj: $type
+                }
+
+                use std::io::Write;
+
+                let data = $expr;
+                let mut file = std::fs::File::create(concat!("static_data/", concat!(stringify!($name), ".dat"))).expect("unable to write static data");
+                file.write_all(& unsafe { Transmute { obj: $expr }.bytes }).expect("unable to write static data");
+                data
             };
         }
     };
 }
 
-#[cfg(not(feature = "gen-small-tables"))]
-macro_rules! const_lookup_table {
-    ($name:ident: $type:ty = ($file:tt, $func:expr)) => {
-        const $name: $type = bytemuck::cast_slice(include_bytes!(concat!("../luts/", $file)));
+/// Loads const data at compiletime from lazy static data generated at runtime
+#[cfg(not(debug_assertions))]
+macro_rules! const_data {
+    (pub $name:ident: $type:ty = $epr:expr) => {
+        pub const $name: $type = unsafe {
+            union Transmute {
+                bytes: [u8; { std::mem::size_of::<$type>() }],
+                obj: $type,
+            }
+            Transmute {
+                bytes: *include_bytes!(concat!("../static_data/", stringify!($name), ".dat")),
+            }
+            .obj
+        };
+    };
+    ($name:ident: $type:ty = $epr:expr) => {
+        const $name: $type = unsafe {
+            union Transmute {
+                bytes: [u8; { std::mem::size_of::<$type>() }],
+                obj: $type,
+            }
+            Transmute {
+                bytes: *include_bytes!(concat!("../static_data/", stringify!($name), ".dat")),
+            }
+            .obj
+        };
     };
 }

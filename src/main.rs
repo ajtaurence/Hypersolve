@@ -1,3 +1,5 @@
+use hypersolve;
+
 fn main() {
-    hypersolve::do_the_thing()
+    hypersolve::cubiecube::cubiecube::CubieCube::solved().apply_move(1);
 }

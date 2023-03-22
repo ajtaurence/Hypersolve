@@ -1,9 +1,6 @@
 #[macro_use]
 mod macros;
-mod cubiecube;
-mod groups;
-mod math;
-mod permutations;
-mod matrixcube;
-mod common;
-mod twist;
+pub mod cubiecube;
+pub mod math;
+pub mod node_cube;
+pub mod piece_cube;

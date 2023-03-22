@@ -7,12 +7,22 @@ description = "3-Phase 2^4 Rubik's cube solver"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bytemuck = "1.12"
+ambassador = "0.3"
 lazy_static = "1.4.0"
 enum-primitive-derive = "0.2.2"
 itertools = "0.10.5"
 num-traits = "^0.1"
+num_enum = "0.5.11"
+strum_macros = "0.24"
+cgmath = "0.18.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.8"
+smallvec = { version = "1.8", features = ["serde"] }
+strum = { version = "0.24", features = ["derive"] }
+regex = "1.6"
+enum-iterator = "1.1"
+enum_dispatch = "0.3"
 
 [features]
-default = ["gen-small-tables"]
-gen-small-tables = []
+default = ["gen-const-data"]
+gen-const-data = []
