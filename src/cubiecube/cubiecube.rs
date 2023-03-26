@@ -19,7 +19,8 @@ const_data!(pub PERM_MOVE_TABLE: [Permutation; N_PHASE1_MOVES as usize] =  gen_p
 const_data!(pub A4_MOVE_TABLE: [Orientation<A4>; N_PHASE1_MOVES as usize] =  gen_a4_move_table());
 
 /// Calculates the twists that hypersolve uses to solve the cube
-fn gen_hypersolve_twists() -> [Twist; N_PHASE1_MOVES as usize] {
+#[allow(unused)]
+fn gen_hypersolve_twists() -> Box<[Twist; N_PHASE1_MOVES as usize]> {
     // Generate twist which dont affect LDBO (index 15) and perform unique actions on a cube
     let twists = Twist::iter_all_twists()
         .filter(|&twist| !PieceLocation::from_index(15).is_affected_by_twist(twist))
@@ -56,7 +57,8 @@ fn gen_hypersolve_twists() -> [Twist; N_PHASE1_MOVES as usize] {
 }
 
 /// Calculates the permutation move table using piece_cube
-fn gen_perm_move_table() -> [Permutation; N_PHASE1_MOVES as usize] {
+#[allow(unused)]
+fn gen_perm_move_table() -> Box<[Permutation; N_PHASE1_MOVES as usize]> {
     HYPERSOLVE_TWISTS
         .iter()
         .map(|&twist| PieceCube::solved().twist(twist).into())
@@ -66,7 +68,8 @@ fn gen_perm_move_table() -> [Permutation; N_PHASE1_MOVES as usize] {
 }
 
 /// Calculates the A4 orientation move table using piece_cube
-fn gen_a4_move_table() -> [Orientation<A4>; N_PHASE1_MOVES as usize] {
+#[allow(unused)]
+fn gen_a4_move_table() -> Box<[Orientation<A4>; N_PHASE1_MOVES as usize]> {
     HYPERSOLVE_TWISTS
         .iter()
         .map(|&twist| PieceCube::solved().twist(twist).into())
@@ -173,21 +176,21 @@ impl Permutation {
             o_map[i - 8] = self.map[i] % 8;
         }
 
-        let mut i_coord = if permutation_utils::is_odd(o_map) {
+        let mut o_coord = if permutation_utils::is_odd(o_map) {
             N_O_COORD_STATES / 2
         } else {
             0
         };
 
         for i in 2..7 {
-            i_coord += o_map[0..i]
+            o_coord += o_map[0..i]
                 .iter()
                 .filter(|&&index| index > o_map[i])
                 .count() as u16
                 * (math::factorial(i as u8) / 2) as u16
         }
 
-        i_coord
+        o_coord
     }
 
     /// Returns a permutation from its coordinates
@@ -463,7 +466,7 @@ impl Orientation<C3> {
     }
 }
 
-#[derive(Default, Clone, Copy, PartialEq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub struct CubieCube {
     pub orientation: Orientation<A4>,
     pub permutation: Permutation,

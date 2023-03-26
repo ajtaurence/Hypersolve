@@ -10,7 +10,7 @@ use crate::{
 };
 
 use itertools::Itertools;
-use lazy_static::lazy_static;
+use rayon::prelude::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 
 pub const N_K4_COORD_STATES: u32 = 4_u32.pow(15);
 pub const N_C3_COORD_STATES: u32 = 3_u32.pow(14);
@@ -22,18 +22,14 @@ pub const N_PHASE1_MOVES: u8 = 92;
 pub const N_PHASE2_MOVES: u8 = 44;
 pub const N_PHASE3_MOVES: u8 = 12;
 
-const_data!(pub IO_MOVE_TABLE: [u16; N_PHASE2_MOVES as usize * N_IO_COORD_STATES as usize] = gen_io_move_table());
+const_data!(pub IO_MOVE_TABLE: [[u16; N_PHASE2_MOVES as usize]; N_IO_COORD_STATES as usize] = gen_io_move_table());
 const_data!(pub I_MOVE_TABLE: [[u16; N_PHASE3_MOVES as usize]; N_I_COORD_STATES as usize] = gen_i_move_table());
 const_data!(pub O_MOVE_TABLE: [[u16; N_PHASE3_MOVES as usize]; N_O_COORD_STATES as usize] = gen_o_move_table());
+const_data!(pub C3_MOVE_TABLE: [[u32; N_PHASE2_MOVES as usize]; N_C3_COORD_STATES as usize] = gen_c3_move_table());
 const_data!(pub MOVE_AXIS: [Axis; N_PHASE1_MOVES as usize] = gen_move_axis_table());
 
-// TODO: try to load from file or generate if needed
-lazy_static! {
-    pub static ref C3_MOVE_TABLE: [u32; N_PHASE2_MOVES as usize * N_C3_COORD_STATES as usize] =
-        gen_c3_move_table();
-}
-
-fn gen_move_axis_table() -> [Axis; N_PHASE1_MOVES as usize] {
+#[allow(unused)]
+fn gen_move_axis_table() -> Box<[Axis; N_PHASE1_MOVES as usize]> {
     HYPERSOLVE_TWISTS
         .iter()
         .map(|&twist| twist.axis())
@@ -42,78 +38,76 @@ fn gen_move_axis_table() -> [Axis; N_PHASE1_MOVES as usize] {
         .unwrap()
 }
 
-fn gen_c3_move_table() -> [u32; N_PHASE2_MOVES as usize * N_C3_COORD_STATES as usize] {
-    let mut table: [u32; N_PHASE2_MOVES as usize * N_C3_COORD_STATES as usize] =
-        [0_u32; N_PHASE2_MOVES as usize * N_C3_COORD_STATES as usize];
+#[allow(unused)]
+fn gen_c3_move_table() -> Box<[[u32; N_PHASE2_MOVES as usize]; N_C3_COORD_STATES as usize]> {
+    let mut table = vec![[0_u32; N_PHASE2_MOVES as usize]; N_C3_COORD_STATES as usize];
 
-    for i in 0..N_C3_COORD_STATES {
+    table.par_iter_mut().enumerate().for_each(|(i, entry)| {
         let cube = CubieCube {
-            orientation: Orientation::from_c3_coord(i).into(),
+            orientation: Orientation::from_c3_coord(i as u32).into(),
             permutation: Permutation::solved(),
         };
 
         for j in 0..(N_PHASE2_MOVES as usize) {
-            table[i as usize * N_PHASE2_MOVES as usize + j] =
-                cube.apply_move(j).orientation.c3_coord();
+            entry[j] = cube.apply_move(j).orientation.c3_coord();
         }
-    }
+    });
 
-    table
+    table.try_into().unwrap()
 }
 
-fn gen_io_move_table() -> [u16; N_PHASE2_MOVES as usize * N_IO_COORD_STATES as usize] {
-    let mut table: [u16; N_PHASE2_MOVES as usize * N_IO_COORD_STATES as usize] =
-        [0_u16; N_PHASE2_MOVES as usize * N_IO_COORD_STATES as usize];
+#[allow(unused)]
+fn gen_io_move_table() -> Box<[[u16; N_PHASE2_MOVES as usize]; N_IO_COORD_STATES as usize]> {
+    let mut table = vec![[0_u16; N_PHASE2_MOVES as usize]; N_IO_COORD_STATES as usize];
 
-    for i in 0..N_IO_COORD_STATES {
+    table.par_iter_mut().enumerate().for_each(|(i, entry)| {
         let cube = CubieCube {
             orientation: Orientation::solved(),
-            permutation: Permutation::from_coords(i, 0, 0),
+            permutation: Permutation::from_coords(i as u16, 0, 0),
         };
 
         for j in 0..(N_PHASE2_MOVES as usize) {
-            table[i as usize * N_PHASE2_MOVES as usize + j] =
-                cube.apply_move(j).permutation.o_coord();
+            entry[j] = cube.apply_move(j).permutation.io_coord();
         }
-    }
+    });
 
-    table
+    table.try_into().unwrap()
 }
 
-fn gen_i_move_table() -> [[u16; N_PHASE3_MOVES as usize]; N_I_COORD_STATES as usize] {
-    let mut table: [[u16; N_PHASE3_MOVES as usize]; N_I_COORD_STATES as usize] =
-        [[0_u16; N_PHASE3_MOVES as usize]; N_I_COORD_STATES as usize];
+#[allow(unused)]
+fn gen_i_move_table() -> Box<[[u16; N_PHASE3_MOVES as usize]; N_I_COORD_STATES as usize]> {
+    let mut table = vec![[0_u16; N_PHASE3_MOVES as usize]; N_I_COORD_STATES as usize];
 
-    for i in 0..N_I_COORD_STATES {
+    table.par_iter_mut().enumerate().for_each(|(i, entry)| {
         let cube = CubieCube {
             orientation: Orientation::solved(),
-            permutation: Permutation::from_coords(0, i, 0),
+            permutation: Permutation::from_coords(0, i as u16, 0),
         };
 
         for j in 0..(N_PHASE3_MOVES as usize) {
-            table[i as usize][j] = cube.apply_move(j).permutation.i_coord();
+            entry[j] = cube.apply_move(j).permutation.i_coord();
         }
-    }
+    });
 
-    table
+    table.try_into().unwrap()
 }
 
-fn gen_o_move_table() -> [[u16; N_PHASE3_MOVES as usize]; N_O_COORD_STATES as usize] {
-    let mut table: [[u16; N_PHASE3_MOVES as usize]; N_O_COORD_STATES as usize] =
-        [[0_u16; N_PHASE3_MOVES as usize]; N_O_COORD_STATES as usize];
+#[allow(unused)]
+fn gen_o_move_table() -> Box<[[u16; N_PHASE3_MOVES as usize]; N_O_COORD_STATES as usize]> {
+    let mut table = vec![[0_u16; N_PHASE3_MOVES as usize]; N_O_COORD_STATES as usize];
 
-    for i in 0..N_O_COORD_STATES {
+    table.par_iter_mut().enumerate().for_each(|(i, entry)| {
         let cube = CubieCube {
             orientation: Orientation::solved(),
-            permutation: Permutation::from_coords(0, 0, i),
+            permutation: Permutation::from_coords(0, 0, i as u16),
         };
 
         for j in 0..(N_PHASE3_MOVES as usize) {
-            table[i as usize][j] = cube.apply_move(j).permutation.o_coord();
+            entry[j] = cube.apply_move(j).permutation.o_coord();
         }
-    }
+    });
 
-    table
+    table.try_into().unwrap()
 }
 
 pub trait Node: Default + PartialEq + Copy + From<CubieCube> {
@@ -223,17 +217,12 @@ impl Node for Phase2Node {
 
     // TODO: Improve move filtering
     fn connected(&self) -> Vec<Self> {
-        C3_MOVE_TABLE[self.c3_coord as usize * N_PHASE2_MOVES as usize
-            ..(self.c3_coord as usize + 1) * N_PHASE2_MOVES as usize]
+        C3_MOVE_TABLE[self.c3_coord as usize]
             .into_iter()
-            .zip(
-                IO_MOVE_TABLE[self.io_coord as usize * N_PHASE2_MOVES as usize
-                    ..(self.io_coord as usize + 1) * N_PHASE2_MOVES as usize]
-                    .into_iter(),
-            )
+            .zip(IO_MOVE_TABLE[self.io_coord as usize].into_iter())
             .zip(MOVE_AXIS.into_iter())
             .filter(|(_, axis)| Some(*axis) != self.last_axis)
-            .map(|((&c3_coord, &io_coord), axis)| Phase2Node {
+            .map(|((c3_coord, io_coord), axis)| Phase2Node {
                 c3_coord,
                 io_coord,
                 last_axis: Some(axis),
