@@ -341,27 +341,12 @@ impl Piece {
 
     pub fn is_affected_by_twist(self, twist: Twist) -> bool {
         match twist.layer {
-            LayerEnum::This => {
-                self.faces
-                    .iter()
-                    .find(|face| face.axis() == twist.axis())
-                    .unwrap()
-                    .sign()
-                    == twist.sign()
-            }
-            LayerEnum::Other => {
-                self.faces
-                    .iter()
-                    .find(|face| face.axis() == twist.axis())
-                    .unwrap()
-                    .sign()
-                    != twist.sign()
-            }
+            LayerEnum::This => self.faces.contains(&twist.face),
+            LayerEnum::Other => !self.faces.contains(&twist.face),
             LayerEnum::Both => true,
         }
     }
     fn rotate(mut self, from: Axis, to: Axis) -> Self {
-        let diff = (from as u8 ^ to as u8) << 1;
         for face in &mut self.faces {
             if face.axis() == from {
                 *face = Face::from_axis_sign(to, face.sign())
@@ -425,11 +410,13 @@ pub struct PieceLocation {
 
 impl From<Piece> for PieceLocation {
     fn from(piece: Piece) -> Self {
+        let mut faces = piece.faces.clone();
+        faces.sort();
         PieceLocation::from_signs(
-            piece.faces[0].sign(),
-            piece.faces[1].sign(),
-            piece.faces[2].sign(),
-            piece.faces[3].sign(),
+            faces[0].sign(),
+            faces[1].sign(),
+            faces[2].sign(),
+            faces[3].sign(),
         )
     }
 }
@@ -479,7 +466,7 @@ impl PieceLocation {
         ])
     }
 
-    const fn from_signs(x: Sign, y: Sign, z: Sign, w: Sign) -> PieceLocation {
+    pub const fn from_signs(x: Sign, y: Sign, z: Sign, w: Sign) -> PieceLocation {
         PieceLocation { x, y, z, w }
     }
 
@@ -503,5 +490,9 @@ impl PieceLocation {
             Sign::from_binary(z),
             Sign::from_binary(w),
         )
+    }
+
+    pub fn is_affected_by_twist(self, twist: Twist) -> bool {
+        self.solved_piece().is_affected_by_twist(twist)
     }
 }

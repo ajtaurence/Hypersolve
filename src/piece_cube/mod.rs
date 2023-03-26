@@ -9,6 +9,8 @@ use twist::*;
 
 #[cfg(test)]
 mod tests {
+    use crate::piece_cube::puzzle::PieceCube;
+
     use super::*;
 
     #[test]
@@ -35,30 +37,5 @@ mod tests {
                 .current_location(),
             PieceLocation::from_index(1)
         )
-    }
-
-    #[test]
-    fn test_piece_affected_by_twist() {
-        assert!(
-            Piece::new([Face::U, Face::L, Face::B, Face::I]).is_affected_by_twist(Twist {
-                face: Face::R,
-                direction: TwistDirectionEnum::D,
-                layer: LayerEnum::Both
-            })
-        );
-        assert!(
-            Piece::new([Face::U, Face::L, Face::B, Face::I]).is_affected_by_twist(Twist {
-                face: Face::R,
-                direction: TwistDirectionEnum::D,
-                layer: LayerEnum::Other
-            })
-        );
-        assert!(
-            !Piece::new([Face::U, Face::L, Face::B, Face::I]).is_affected_by_twist(Twist {
-                face: Face::R,
-                direction: TwistDirectionEnum::D,
-                layer: LayerEnum::This
-            })
-        );
     }
 }

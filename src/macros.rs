@@ -5,7 +5,7 @@ const_data!(
 */
 
 /// Generates lazy static data at runtime and saves to a file
-#[cfg(debug_assertions)]
+#[cfg(feature = "gen-const-data")]
 macro_rules! const_data {
     (pub $name:ident: $type:ty = $expr:expr) => {
         lazy_static::lazy_static! {
@@ -44,7 +44,7 @@ macro_rules! const_data {
 }
 
 /// Loads const data at compiletime from lazy static data generated at runtime
-#[cfg(not(debug_assertions))]
+#[cfg(not(feature = "gen-const-data"))]
 macro_rules! const_data {
     (pub $name:ident: $type:ty = $epr:expr) => {
         pub const $name: $type = unsafe {

@@ -102,7 +102,7 @@ fn gen_o_move_table() -> [[u16; N_PHASE3_MOVES as usize]; N_O_COORD_STATES as us
     let mut table: [[u16; N_PHASE3_MOVES as usize]; N_O_COORD_STATES as usize] =
         [[0_u16; N_PHASE3_MOVES as usize]; N_O_COORD_STATES as usize];
 
-    for i in 0..N_I_COORD_STATES {
+    for i in 0..N_O_COORD_STATES {
         let cube = CubieCube {
             orientation: Orientation::solved(),
             permutation: Permutation::from_coords(0, 0, i),

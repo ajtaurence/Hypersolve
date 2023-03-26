@@ -22,5 +22,8 @@ pub const fn factorial(n: u8) -> u64 {
 }
 
 pub const fn n_choose_k(n: u8, k: u8) -> u16 {
+    if k > n {
+        return 0;
+    }
     (factorial(n) / (factorial(k) * factorial(n - k))) as u16
 }

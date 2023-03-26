@@ -9,11 +9,7 @@ use num_traits::FromPrimitive;
 use crate::{
     math,
     node_cube::node::{N_IO_COORD_STATES, N_I_COORD_STATES, N_O_COORD_STATES, N_PHASE1_MOVES},
-    piece_cube::{
-        pieces::{Face, Piece},
-        puzzle::PieceCube,
-        twist::Twist,
-    },
+    piece_cube::{pieces::PieceLocation, puzzle::PieceCube, twist::Twist},
 };
 
 use super::*;
@@ -24,11 +20,9 @@ const_data!(pub A4_MOVE_TABLE: [Orientation<A4>; N_PHASE1_MOVES as usize] =  gen
 
 /// Calculates the twists that hypersolve uses to solve the cube
 fn gen_hypersolve_twists() -> [Twist; N_PHASE1_MOVES as usize] {
-    // Generate twist which dont affect LDBO and perform unique actions on a cube
+    // Generate twist which dont affect LDBO (index 15) and perform unique actions on a cube
     let twists = Twist::iter_all_twists()
-        .filter(|&twist| {
-            Piece::new([Face::L, Face::D, Face::B, Face::O]).is_affected_by_twist(twist)
-        })
+        .filter(|&twist| !PieceLocation::from_index(15).is_affected_by_twist(twist))
         .unique_by(|&twist| PieceCube::solved().twist(twist))
         .collect_vec();
 
@@ -48,10 +42,11 @@ fn gen_hypersolve_twists() -> [Twist; N_PHASE1_MOVES as usize] {
     let justphase3twists = twists.into_iter().filter(|&twist| {
         let cube = PieceCube::solved().twist(twist);
         Orientation::<A4>::from(cube).k4_coord() == 0
-            && (Permutation::from(cube).io_coord() == 0
-                || Orientation::<C3>::from(cube).c3_coord() == 0)
+            && Permutation::from(cube).io_coord() == 0
+            && Orientation::<C3>::from(cube).c3_coord() == 0
     });
 
+    // Combine all twists into a list in order of phase
     justphase3twists
         .chain(justphase2twists)
         .chain(justphase1twists)
@@ -82,7 +77,7 @@ fn gen_a4_move_table() -> [Orientation<A4>; N_PHASE1_MOVES as usize] {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Permutation {
-    map: [u8; 15],
+    pub map: [u8; 15],
 }
 
 impl Default for Permutation {
@@ -419,7 +414,7 @@ impl<T: Into<K4>> Orientation<T> {
             .into_iter()
             .enumerate()
             .map(|(i, value)| (Into::<K4>::into(value) as u32) << (2 * i))
-            .product()
+            .sum()
     }
 }
 

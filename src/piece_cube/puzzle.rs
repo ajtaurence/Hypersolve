@@ -18,13 +18,19 @@ impl Default for PieceCube {
 impl Index<PieceLocation> for PieceCube {
     type Output = Piece;
     fn index(&self, index: PieceLocation) -> &Self::Output {
-        &self.pieces[index.index()]
+        self.pieces
+            .iter()
+            .find(|&&piece| PieceLocation::from(piece) == index)
+            .unwrap()
     }
 }
 
 impl IndexMut<PieceLocation> for PieceCube {
     fn index_mut(&mut self, index: PieceLocation) -> &mut Self::Output {
-        &mut self.pieces[index.index()]
+        self.pieces
+            .iter_mut()
+            .find(|piece| PieceLocation::from(**piece) == index)
+            .unwrap()
     }
 }
 
