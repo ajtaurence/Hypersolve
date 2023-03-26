@@ -243,10 +243,6 @@ impl Face {
         }
     }
 
-    fn symbol_upper(self) -> char {
-        self.symbol_upper_str().chars().next().unwrap()
-    }
-
     fn vector(self) -> Vector4<f32> {
         (match self.axis() {
             Axis::X => Vector4::unit_x(),

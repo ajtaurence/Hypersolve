@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use cgmath::{vec3, InnerSpace, Vector3, Vector4};
+use cgmath::{InnerSpace, Vector3, Vector4};
 use itertools::iproduct;
 use lazy_static::lazy_static;
 use num_enum::FromPrimitive;
@@ -226,32 +226,6 @@ pub enum TwistDirectionEnum {
 }
 
 impl TwistDirectionEnum {
-    fn symbol_on_face(self, face: Face) -> String {
-        if face == Face::O {
-            return self.rev().symbol_on_face(Face::I);
-        }
-
-        let vector4 = (face.basis_matrix() * self.vector3_f32().extend(0.0))
-            .cast::<i8>()
-            .unwrap();
-
-        fn select_face_char(x: i8, char_pos: &'static str, char_neg: &'static str) -> &'static str {
-            match x {
-                1 => char_pos,
-                -1 => char_neg,
-                _ => "",
-            }
-        }
-
-        // "UFRO" is the most natural-sounding order IMO.
-        String::new()
-            + select_face_char(vector4.y, "U", "D")
-            + select_face_char(vector4.z, "F", "B")
-            + select_face_char(vector4.x, "R", "L")
-            + select_face_char(vector4.w, "O", "I")
-            + if self.is_face_180() { "2" } else { "" }
-    }
-
     pub fn symbol_xyz(self) -> &'static str {
         use TwistDirectionEnum::*;
 
@@ -294,37 +268,8 @@ impl TwistDirectionEnum {
         }
     }
 
-    fn period(self) -> usize {
-        use TwistDirectionEnum::*;
-
-        match self {
-            // 90-degree face (2c) twists.
-            R | L | U | D | F | B => 4,
-            // 180-degree face (2c) twists.
-            R2 | L2 | U2 | D2 | F2 | B2 => 2,
-            // 180-degree edge (3c) twists.
-            UF | DB | UR | DL | FR | BL | DF | UB | UL | DR | BR | FL => 2,
-            // 120-degree corner (4c) twists.
-            UFR | DBL | UFL | DBR | DFR | UBL | UBR | DFL => 3,
-        }
-    }
     fn rev(self) -> Self {
         Self::from(self as u8 ^ 1)
-    }
-
-    fn mirror(self, axis: Axis) -> Self {
-        if axis == Axis::W {
-            return self;
-        }
-        let mut v = self.vector3();
-        v *= -1;
-        v[axis as usize] *= -1;
-        let ret = Self::from_signs_within_face(v).unwrap();
-        if self.is_face_180() {
-            ret.double().unwrap()
-        } else {
-            ret
-        }
     }
 
     fn half(self) -> Option<Self> {
@@ -335,11 +280,7 @@ impl TwistDirectionEnum {
             _ => None,
         }
     }
-    fn is_face_180(self) -> bool {
-        use TwistDirectionEnum::*;
 
-        matches!(self, R2 | L2 | U2 | D2 | F2 | B2)
-    }
     fn double(self) -> Option<Self> {
         use TwistDirectionEnum::*;
 
@@ -351,30 +292,6 @@ impl TwistDirectionEnum {
         }
     }
 
-    fn vector3(self) -> Vector3<i8> {
-        use TwistDirectionEnum::*;
-
-        let x = match self {
-            R | R2 | UR | FR | DR | BR | UFR | DBR | DFR | UBR => 1, // R
-            L | L2 | UL | FL | DL | BL | UFL | DBL | DFL | UBL => -1, // L
-            U | D | F | B | U2 | D2 | F2 | B2 | UF | DB | DF | UB => 0,
-        };
-        let y = match self {
-            U | U2 | UF | UR | UB | UL | UFR | UFL | UBL | UBR => 1, // U
-            D | D2 | DF | DR | DB | DL | DFR | DFL | DBL | DBR => -1, // D
-            R | L | F | B | R2 | L2 | F2 | B2 | FR | BL | BR | FL => 0,
-        };
-        let z = match self {
-            F | F2 | UF | FR | DF | FL | UFR | UFL | DFR | DFL => 1, // F
-            B | B2 | UB | BR | DB | BL | UBR | UBL | DBR | DBL => -1, // B
-            R | L | U | D | R2 | L2 | U2 | D2 | UR | DL | UL | DR => 0,
-        };
-
-        vec3(x, y, z)
-    }
-    fn vector3_f32(self) -> Vector3<f32> {
-        self.vector3().cast().unwrap()
-    }
     fn from_signs_within_face(v: Vector3<i8>) -> Option<Self> {
         use TwistDirectionEnum::*;
 

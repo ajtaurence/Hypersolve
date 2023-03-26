@@ -9,8 +9,6 @@ use twist::*;
 
 #[cfg(test)]
 mod tests {
-    use crate::piece_cube::puzzle::PieceCube;
-
     use super::*;
 
     #[test]
