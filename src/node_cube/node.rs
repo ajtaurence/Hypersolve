@@ -136,7 +136,7 @@ pub trait Node: Default + PartialEq + Copy + From<CubieCube> {
     }
 }
 
-#[derive(Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct Phase1Node {
     orientation: Orientation<K4>,
     last_axis: Option<Axis>,
@@ -266,9 +266,9 @@ impl Node for Phase3Node {
         let o_coord = (index / (N_I_COORD_STATES / 2) as usize) as u16;
 
         let i_coord = if o_coord >= (N_O_COORD_STATES / 2) as u16 {
-            (index % (N_I_COORD_STATES / 2) as usize) as u16
-        } else {
             (index % (N_I_COORD_STATES / 2) as usize) as u16 + (N_I_COORD_STATES / 2)
+        } else {
+            (index % (N_I_COORD_STATES / 2) as usize) as u16
         };
 
         Phase3Node {
