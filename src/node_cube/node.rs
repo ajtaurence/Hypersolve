@@ -25,8 +25,9 @@ pub const N_PHASE3_MOVES: u8 = 12;
 const_data!(pub IO_MOVE_TABLE: [[u16; N_PHASE2_MOVES as usize]; N_IO_COORD_STATES as usize] = gen_io_move_table());
 const_data!(pub I_MOVE_TABLE: [[u16; N_PHASE3_MOVES as usize]; N_I_COORD_STATES as usize] = gen_i_move_table());
 const_data!(pub O_MOVE_TABLE: [[u16; N_PHASE3_MOVES as usize]; N_O_COORD_STATES as usize] = gen_o_move_table());
-const_data!(pub C3_MOVE_TABLE: [[u32; N_PHASE2_MOVES as usize]; N_C3_COORD_STATES as usize] = gen_c3_move_table());
 const_data!(pub MOVE_AXIS: [Axis; N_PHASE1_MOVES as usize] = gen_move_axis_table());
+
+runtime_data!("C3.MOVE", pub static C3_MOVE_TABLE: [[u32; N_PHASE2_MOVES as usize]; N_C3_COORD_STATES as usize] = gen_c3_move_table());
 
 #[allow(unused)]
 fn gen_move_axis_table() -> Box<[Axis; N_PHASE1_MOVES as usize]> {
