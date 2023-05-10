@@ -219,11 +219,11 @@ impl Node for Phase2Node {
     // TODO: Improve move filtering
     fn connected(&self) -> Vec<Self> {
         C3_MOVE_TABLE[self.c3_coord as usize]
-            .into_iter()
-            .zip(IO_MOVE_TABLE[self.io_coord as usize].into_iter())
+            .iter()
+            .zip(IO_MOVE_TABLE[self.io_coord as usize].iter())
             .zip(MOVE_AXIS.into_iter())
             .filter(|(_, axis)| Some(*axis) != self.last_axis)
-            .map(|((c3_coord, io_coord), axis)| Phase2Node {
+            .map(|((&c3_coord, &io_coord), axis)| Phase2Node {
                 c3_coord,
                 io_coord,
                 last_axis: Some(axis),
@@ -281,11 +281,11 @@ impl Node for Phase3Node {
     // TODO: Improve move filtering
     fn connected(&self) -> Vec<Self> {
         I_MOVE_TABLE[self.i_coord as usize]
-            .into_iter()
-            .zip(O_MOVE_TABLE[self.o_coord as usize].into_iter())
+            .iter()
+            .zip(O_MOVE_TABLE[self.o_coord as usize].iter())
             .zip(MOVE_AXIS.into_iter())
             .filter(|(_, axis)| Some(*axis) != self.last_axis)
-            .map(|((i_coord, o_coord), axis)| Phase3Node {
+            .map(|((&i_coord, &o_coord), axis)| Phase3Node {
                 i_coord,
                 o_coord,
                 last_axis: Some(axis),

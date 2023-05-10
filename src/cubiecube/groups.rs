@@ -1,6 +1,5 @@
-use std::ops::Mul;
-
 use enum_primitive_derive::Primitive;
+use std::ops::Mul;
 
 use crate::piece_cube::pieces::{Axis, Piece};
 
@@ -100,7 +99,6 @@ pub enum K4 {
 impl Identity for K4 {}
 
 impl From<A4> for K4 {
-    #[inline]
     fn from(value: A4) -> Self {
         use A4::*;
 
@@ -145,7 +143,6 @@ const K4_A4_MUL_TABLE: [[K4; 4]; 12] = {
 impl Mul<A4> for K4 {
     type Output = K4;
 
-    #[inline]
     fn mul(self, rhs: A4) -> K4 {
         K4_A4_MUL_TABLE[rhs as usize][self as usize]
     }
@@ -187,7 +184,6 @@ impl From<C3> for A4 {
 impl Mul for C3 {
     type Output = Self;
 
-    #[inline]
     fn mul(self, rhs: C3) -> Self::Output {
         use C3::*;
         match (self, rhs) {
@@ -201,7 +197,6 @@ impl Mul for C3 {
 impl Mul<A4> for C3 {
     type Output = Self;
 
-    #[inline]
     fn mul(self, rhs: A4) -> Self::Output {
         self * C3::from(rhs)
     }

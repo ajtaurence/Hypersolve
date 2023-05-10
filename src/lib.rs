@@ -4,3 +4,4 @@ pub mod cubiecube;
 pub mod math;
 pub mod node_cube;
 pub mod piece_cube;
+pub mod prune;

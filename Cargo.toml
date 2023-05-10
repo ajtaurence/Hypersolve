@@ -26,5 +26,5 @@ once_cell = "1.17.1"
 rayon = "1.7.0"
 
 [features]
-default = []
+default = ["gen-const-data"]
 gen-const-data = []
