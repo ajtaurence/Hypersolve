@@ -87,16 +87,15 @@ impl Twist {
     }
 
     fn mc4d_twist_order() -> impl Iterator<Item = Option<(Face, TwistDirectionEnum)>> {
-        // Intentionally switch I and O
         const MC4D_FACE_ORDER: [Face; 8] = [
-            Face::O,
+            Face::I,
             Face::B,
             Face::D,
             Face::L,
             Face::R,
             Face::U,
             Face::F,
-            Face::I,
+            Face::O,
         ];
 
         MC4D_FACE_ORDER.into_iter().flat_map(|face| {
