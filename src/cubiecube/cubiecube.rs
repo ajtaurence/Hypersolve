@@ -91,12 +91,18 @@ impl Default for Permutation {
 
 impl From<PieceCube> for Permutation {
     fn from(cube: PieceCube) -> Self {
-        Permutation {
-            map: cube
-                .reposition()
-                .pieces_except_last()
-                .map(|piece| piece.current_location().index() as u8),
+        // TODO: neaten this
+        let inverse_map = cube
+            .reposition()
+            .pieces_except_last()
+            .map(|piece| piece.current_location().index() as u8);
+
+        let mut map = [0_u8; 15];
+        for i in 0..15 {
+            map[inverse_map[i as usize] as usize] = i;
         }
+
+        Permutation { map }
     }
 }
 
@@ -349,6 +355,7 @@ impl<T: Identity + Copy + PartialEq + From<A4>> From<PieceCube> for Orientation<
                 .pieces_except_last()
                 .map(|piece| A4::from(piece).into()),
         }
+        .permute(Permutation::from(cube))
     }
 }
 
