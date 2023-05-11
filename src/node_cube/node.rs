@@ -172,7 +172,8 @@ impl Node for Phase1Node {
             .map(|((permutation, orientation), axis)| Phase1Node {
                 orientation: self
                     .orientation
-                    .apply_orientation(orientation.permute(*permutation)),
+                    .permute(*permutation)
+                    .apply_orientation(*orientation),
                 last_axis: Some(axis),
             })
             .collect()
