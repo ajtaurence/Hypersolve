@@ -272,16 +272,15 @@ impl Node for Phase3Node {
     const N_STATES: usize = N_I_COORD_STATES as usize * N_O_COORD_STATES as usize;
 
     fn get_index(&self) -> usize {
-        self.o_coord as usize * (N_I_COORD_STATES / 2) as usize + (self.i_coord % 2) as usize
+        self.o_coord as usize * (N_I_COORD_STATES / 2) as usize
+            + (self.i_coord % (N_I_COORD_STATES / 2)) as usize
     }
 
     fn from_index(index: usize, last_axis: Option<Axis>) -> Self {
         let o_coord = (index / (N_I_COORD_STATES / 2) as usize) as u16;
-
-        let i_coord = if o_coord >= (N_O_COORD_STATES / 2) as u16 {
-            (index % (N_I_COORD_STATES / 2) as usize) as u16 + (N_I_COORD_STATES / 2)
-        } else {
-            (index % (N_I_COORD_STATES / 2) as usize) as u16
+        let mut i_coord = (index % (N_I_COORD_STATES / 2) as usize) as u16;
+        if o_coord >= (N_O_COORD_STATES / 2) as u16 {
+            i_coord += N_I_COORD_STATES / 2;
         };
 
         Phase3Node {
