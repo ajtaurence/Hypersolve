@@ -49,13 +49,13 @@ impl PieceCube {
         )
     }
 
-    pub fn twist(&mut self, twist: Twist) -> Self {
+    pub fn twist(mut self, twist: Twist) -> Self {
         for i in 0..16 {
             if self.pieces[i].is_affected_by_twist(twist) {
                 self.pieces[i] = self.pieces[i].twist(twist);
             }
         }
-        *self
+        self
     }
 
     pub fn pieces_except_last(self) -> [Piece; 15] {

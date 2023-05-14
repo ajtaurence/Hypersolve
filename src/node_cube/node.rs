@@ -148,6 +148,18 @@ impl PartialEq for Phase1Node {
     }
 }
 
+impl Phase1Node {
+    pub fn apply_move(self, i: usize) -> Self {
+        Phase1Node {
+            orientation: self
+                .orientation
+                .permute(PERM_MOVE_TABLE[i])
+                .apply_orientation(A4_MOVE_TABLE[i]),
+            last_axis: Some(MOVE_AXIS[i]),
+        }
+    }
+}
+
 impl Node for Phase1Node {
     const N_STATES: usize = N_K4_COORD_STATES as usize;
 

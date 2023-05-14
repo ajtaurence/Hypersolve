@@ -14,6 +14,9 @@ pub trait PruningTable<T: Node> {
 
     /// Updates the max depth if all states were found before the maximum depth
     fn update_max_depth(&mut self, new_max_depth: u8);
+
+    /// Anything that needs to be done to the pruning table after it is done being generated
+    fn finalize(&mut self);
 }
 
 #[derive(Debug)]
@@ -45,6 +48,10 @@ impl<T: Node> PruningTable<T> for HashMapPruningTable {
     fn update_max_depth(&mut self, new_max_depth: u8) {
         self.max_depth = new_max_depth;
     }
+
+    fn finalize(&mut self) {
+        self.data.shrink_to_fit()
+    }
 }
 
 pub type ArrayPruningTable = Box<[u8]>;
@@ -63,6 +70,8 @@ impl<T: Node> PruningTable<T> for ArrayPruningTable {
     }
 
     fn update_max_depth(&mut self, _new_max_depth: u8) {}
+
+    fn finalize(&mut self) {}
 }
 
 // TODO: check that behavior is correct
@@ -111,6 +120,7 @@ impl<T> DepthQueue<T> {
 
         self.pop_from_first = !self.pop_from_first;
         self.depth += 1;
+        println!("depth: {}", self.depth);
         return self.pop();
     }
 
@@ -144,5 +154,21 @@ pub fn gen_pruning_table<P: PruningTable<N>, N: Node>(max_depth: u8) -> P {
         }
     }
 
+    pruning_table.finalize();
+
     return pruning_table;
+}
+
+#[test]
+fn test_phase1_pruning_table_gen() {
+    use crate::node_cube::node::Phase1Node;
+    let pruning_table = gen_pruning_table::<HashMapPruningTable, Phase1Node>(2);
+    assert_eq!(pruning_table.data.len(), 166);
+}
+
+#[test]
+fn test_phase3_pruning_table_gen() {
+    use crate::node_cube::node::Phase3Node;
+    let pruning_table = gen_pruning_table::<HashMapPruningTable, Phase3Node>(2);
+    assert_eq!(pruning_table.data.len(), 70);
 }

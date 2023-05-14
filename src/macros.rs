@@ -112,7 +112,7 @@ macro_rules! const_data {
 
             let data = $expr;
             let mut file =
-                std::fs::File::create(concat!("static_data/", concat!(stringify!($name), ".dat")))
+                std::fs::File::create(concat!("const_data/", concat!(stringify!($name), ".dat")))
                     .expect("unable to write static data");
             file.write_all(unsafe { Transmute { obj: data.as_ref() }.bytes })
                 .expect("unable to write static data");
@@ -130,7 +130,7 @@ macro_rules! const_data {
 
             let data = $expr;
             let mut file =
-                std::fs::File::create(concat!("static_data/", concat!(stringify!($name), ".dat")))
+                std::fs::File::create(concat!("const_data/", concat!(stringify!($name), ".dat")))
                     .expect("unable to write static data");
             file.write_all(unsafe { Transmute { obj: data.as_ref() }.bytes })
                 .expect("unable to write static data");
@@ -156,7 +156,7 @@ macro_rules! const_data {
                 obj: $type,
             }
             Transmute {
-                bytes: *include_bytes!(concat!("../../static_data/", stringify!($name), ".dat")),
+                bytes: *include_bytes!(concat!("../../const_data/", stringify!($name), ".dat")),
             }
             .obj
         };
@@ -168,7 +168,7 @@ macro_rules! const_data {
                 obj: $type,
             }
             Transmute {
-                bytes: *include_bytes!(concat!("../../static_data/", stringify!($name), ".dat")),
+                bytes: *include_bytes!(concat!("../../const_data/", stringify!($name), ".dat")),
             }
             .obj
         };

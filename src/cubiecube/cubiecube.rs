@@ -1,7 +1,7 @@
 //! Cube representation based on a permutation of all pieces and an orientation
 //! for each piece.
 
-use std::ops::Mul;
+use std::{fmt::Debug, ops::Mul};
 
 use itertools::Itertools;
 use num_traits::FromPrimitive;
@@ -78,7 +78,7 @@ fn gen_a4_move_table() -> Box<[Orientation<A4>; N_PHASE1_MOVES as usize]> {
         .unwrap()
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Permutation {
     pub map: [u8; 15],
 }
@@ -91,18 +91,14 @@ impl Default for Permutation {
 
 impl From<PieceCube> for Permutation {
     fn from(cube: PieceCube) -> Self {
-        // TODO: neaten this
+        // this gets the inverse of the map we want
         let inverse_map = cube
             .reposition()
             .pieces_except_last()
             .map(|piece| piece.current_location().index() as u8);
 
-        let mut map = [0_u8; 15];
-        for i in 0..15 {
-            map[inverse_map[i as usize] as usize] = i;
-        }
-
-        Permutation { map }
+        // invert it to get the map we want
+        Permutation { map: inverse_map }.invert()
     }
 }
 
@@ -116,6 +112,23 @@ impl Permutation {
         }
 
         Permutation { map }
+    }
+
+    /// Returns the inverse of this permutation
+    pub fn inverse(&self) -> Self {
+        let mut inverse_map = [0; 15];
+
+        for i in 0..15 {
+            inverse_map[self.map[i] as usize] = i as u8;
+        }
+
+        Permutation { map: inverse_map }
+    }
+
+    /// Converts this permutation to its inverse
+    pub fn invert(mut self) -> Self {
+        self = self.inverse();
+        self
     }
 
     /// Returns whether the permutation is solved
@@ -347,7 +360,7 @@ pub struct Orientation<T> {
     pub state: [T; 15],
 }
 
-impl<T: Identity + Copy + PartialEq + From<A4>> From<PieceCube> for Orientation<T> {
+impl<T: Identity + Debug + Copy + PartialEq + From<A4>> From<PieceCube> for Orientation<T> {
     fn from(cube: PieceCube) -> Self {
         Orientation {
             state: cube
@@ -366,12 +379,12 @@ impl<T: Identity + Copy + PartialEq> Orientation<T> {
 
     pub fn solved() -> Orientation<T> {
         Orientation {
-            state: [T::identity(); 15],
+            state: [T::IDENTITY; 15],
         }
     }
 
     pub fn permute(self, permutation: Permutation) -> Orientation<T> {
-        let mut result = [T::identity(); 15];
+        let mut result = [T::IDENTITY; 15];
 
         for (i, &index) in permutation.map.iter().enumerate() {
             result[i] = self.state[index as usize];
@@ -380,16 +393,16 @@ impl<T: Identity + Copy + PartialEq> Orientation<T> {
         Orientation { state: result }
     }
 
-    pub fn apply_orientation<U>(self, action: Orientation<U>) -> Orientation<T::Output>
+    pub fn apply_orientation<U>(self, action: Orientation<U>) -> Orientation<U::Output>
     where
         U: Copy,
-        T: Mul<U>,
-        T::Output: Identity + Copy,
+        U: Mul<T>,
+        U::Output: Identity + Copy,
     {
-        let mut result = [T::Output::identity(); 15];
+        let mut result = [U::Output::IDENTITY; 15];
 
         for i in 0..15 {
-            result[i] = self.state[i] * action.state[i];
+            result[i] = action.state[i] * self.state[i];
         }
 
         Orientation { state: result }
@@ -400,7 +413,7 @@ macro_rules! impl_convert_orientation {
     (($T:ty) -> ($U:ty)) => {
         impl From<Orientation<$U>> for Orientation<$T> {
             fn from(value: Orientation<$U>) -> Self {
-                let mut result = [<$T>::identity(); 15];
+                let mut result = [<$T>::IDENTITY; 15];
 
                 for i in 0..15 {
                     result[i] = value.state[i].into();
@@ -457,7 +470,7 @@ impl<T: Into<C3> + Copy> Orientation<T> {
 impl Orientation<C3> {
     /// Returns an orientation state from a C3 move table index
     pub fn from_c3_coord(c3_coord: u32) -> Orientation<C3> {
-        let mut result = [C3::identity(); 15];
+        let mut result = [C3::IDENTITY; 15];
 
         let mut coord = c3_coord;
 
@@ -517,5 +530,15 @@ impl CubieCube {
                 .apply_orientation(A4_MOVE_TABLE[i]),
             permutation: self.permutation.permute(PERM_MOVE_TABLE[i]),
         }
+    }
+}
+
+#[test]
+fn test_cubiecube_twists() {
+    for i in 0..HYPERSOLVE_TWISTS.len() {
+        let cubiecube = CubieCube::from(PieceCube::solved()).apply_move(i);
+        let piececube = PieceCube::solved().twist(HYPERSOLVE_TWISTS[i]);
+
+        assert!(cubiecube == CubieCube::from(piececube))
     }
 }

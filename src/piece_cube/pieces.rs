@@ -1,11 +1,12 @@
+use cgmath::{Matrix4, Vector4, Zero};
+use num_enum::FromPrimitive;
 use std::{
     fmt::{Debug, Display},
     ops::{Index, IndexMut, Mul, Neg},
 };
-
-use cgmath::{Matrix4, Vector4, Zero};
-use num_enum::FromPrimitive;
 use strum::EnumIter;
+
+use crate::cubiecube::groups::{Parity, PermutationWord};
 
 use super::*;
 
@@ -202,7 +203,7 @@ impl Face {
         }
     }
 
-    const fn from_axis_sign(axis: Axis, sign: Sign) -> Self {
+    pub const fn from_axis_sign(axis: Axis, sign: Sign) -> Self {
         use Face::*;
         match (axis, sign) {
             (Axis::X, Sign::Pos) => R,
@@ -328,6 +329,11 @@ impl Piece {
         Piece { faces }
     }
 
+    /// Returns the axis permutation of the piece in the "is replaced by format"
+    pub fn to_axis_permutation(&self) -> PermutationWord<4> {
+        PermutationWord(self.faces.map(|f| f.axis() as usize)).inverse()
+    }
+
     pub fn current_location(self) -> PieceLocation {
         let mut solved_faces = self.faces.clone();
         solved_faces.sort();
@@ -338,7 +344,7 @@ impl Piece {
     pub fn is_affected_by_twist(self, twist: Twist) -> bool {
         match twist.layer {
             LayerEnum::This => self.faces.contains(&twist.face),
-            LayerEnum::Other => !self.faces.contains(&twist.face),
+            LayerEnum::Other => self.faces.contains(&twist.face.opposite()),
             LayerEnum::Both => true,
         }
     }
@@ -464,6 +470,19 @@ impl PieceLocation {
 
     pub const fn from_signs(x: Sign, y: Sign, z: Sign, w: Sign) -> PieceLocation {
         PieceLocation { x, y, z, w }
+    }
+
+    /// Gets the parity of this piece location
+    pub fn parity(&self) -> Parity {
+        match self.x * self.y * self.z * self.w {
+            Sign::Pos => Parity::Even,
+            Sign::Neg => Parity::Odd,
+        }
+    }
+
+    /// Iterates over all piece locations
+    pub fn iter() -> impl Iterator<Item = Self> {
+        (0..=16).map(|i| PieceLocation::from_index(i))
     }
 
     pub const fn index(self) -> usize {
