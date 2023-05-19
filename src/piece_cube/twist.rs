@@ -328,3 +328,49 @@ impl TwistDirectionEnum {
         }
     }
 }
+
+#[test]
+fn test_twist_composition() {
+    use crate::piece_cube::puzzle::PieceCube;
+    let solved = PieceCube::solved();
+
+    for face in Face::iter() {
+        assert_eq!(
+            solved
+                .twist(Twist {
+                    face,
+                    direction: TwistDirectionEnum::R,
+                    layer: LayerEnum::This
+                })
+                .twist(Twist {
+                    face,
+                    direction: TwistDirectionEnum::U,
+                    layer: LayerEnum::This
+                }),
+            solved.twist(Twist {
+                face,
+                direction: TwistDirectionEnum::UFR,
+                layer: LayerEnum::This
+            })
+        );
+    }
+
+    assert_eq!(
+        solved
+            .twist(Twist {
+                face: Face::L,
+                direction: TwistDirectionEnum::R,
+                layer: LayerEnum::This
+            })
+            .twist(Twist {
+                face: Face::L,
+                direction: TwistDirectionEnum::R,
+                layer: LayerEnum::Other
+            }),
+        solved.twist(Twist {
+            face: Face::L,
+            direction: TwistDirectionEnum::R,
+            layer: LayerEnum::Both
+        })
+    );
+}

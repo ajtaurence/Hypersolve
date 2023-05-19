@@ -8,7 +8,7 @@
 
 :compile
 @echo Compiling Hypersolve . . .
-@cargo build --no-default-features --release
+@cargo build --features "" --release
 
 :end
 @pause
