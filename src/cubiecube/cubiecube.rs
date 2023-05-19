@@ -3,24 +3,42 @@
 
 use std::{fmt::Debug, ops::Mul};
 
-use itertools::Itertools;
 use num_traits::FromPrimitive;
 
+use super::*;
 use crate::{
     math,
     node_cube::node::{N_IO_COORD_STATES, N_I_COORD_STATES, N_O_COORD_STATES, N_PHASE1_MOVES},
-    piece_cube::{pieces::PieceLocation, puzzle::PieceCube, twist::Twist},
+    piece_cube::{puzzle::PieceCube, twist::Twist},
 };
-
-use super::*;
 
 const_data!(pub HYPERSOLVE_TWISTS: [Twist; N_PHASE1_MOVES as usize] =  gen_hypersolve_twists());
 const_data!(pub PERM_MOVE_TABLE: [Permutation; N_PHASE1_MOVES as usize] =  gen_perm_move_table());
 const_data!(pub A4_MOVE_TABLE: [Orientation<A4>; N_PHASE1_MOVES as usize] =  gen_a4_move_table());
 
+#[cfg(feature = "gen-const-data")]
+#[test]
+fn generate_hypersolve_twists() {
+    let _ = &*HYPERSOLVE_TWISTS;
+}
+
+#[cfg(feature = "gen-const-data")]
+#[test]
+fn generate_perm_move_table() {
+    let _ = &*PERM_MOVE_TABLE;
+}
+
+#[cfg(feature = "gen-const-data")]
+#[test]
+fn generate_a4_move_table() {
+    let _ = &*A4_MOVE_TABLE;
+}
+
 /// Calculates the twists that hypersolve uses to solve the cube
-#[allow(unused)]
+#[cfg(feature = "gen-const-data")]
 fn gen_hypersolve_twists() -> Box<[Twist; N_PHASE1_MOVES as usize]> {
+    use crate::piece_cube::pieces::PieceLocation;
+    use itertools::Itertools;
     // Generate twist which dont affect LDBO (index 15) and perform unique actions on a cube
     let twists = Twist::iter_all_twists()
         .filter(|&twist| !PieceLocation::from_index(15).is_affected_by_twist(twist))
@@ -57,8 +75,9 @@ fn gen_hypersolve_twists() -> Box<[Twist; N_PHASE1_MOVES as usize]> {
 }
 
 /// Calculates the permutation move table using piece_cube
-#[allow(unused)]
+#[cfg(feature = "gen-const-data")]
 fn gen_perm_move_table() -> Box<[Permutation; N_PHASE1_MOVES as usize]> {
+    use itertools::Itertools;
     HYPERSOLVE_TWISTS
         .iter()
         .map(|&twist| PieceCube::solved().twist(twist).into())
@@ -68,8 +87,9 @@ fn gen_perm_move_table() -> Box<[Permutation; N_PHASE1_MOVES as usize]> {
 }
 
 /// Calculates the A4 orientation move table using piece_cube
-#[allow(unused)]
+#[cfg(feature = "gen-const-data")]
 fn gen_a4_move_table() -> Box<[Orientation<A4>; N_PHASE1_MOVES as usize]> {
+    use itertools::Itertools;
     HYPERSOLVE_TWISTS
         .iter()
         .map(|&twist| PieceCube::solved().twist(twist).into())

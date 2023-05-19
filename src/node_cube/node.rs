@@ -1,15 +1,11 @@
 use crate::{
     cubiecube::{
-        cubiecube::{
-            CubieCube, Orientation, Permutation, A4_MOVE_TABLE, HYPERSOLVE_TWISTS, PERM_MOVE_TABLE,
-        },
+        cubiecube::{CubieCube, Orientation, Permutation, A4_MOVE_TABLE, PERM_MOVE_TABLE},
         groups::K4,
     },
     math,
     piece_cube::pieces::Axis,
 };
-
-use itertools::Itertools;
 use rayon::prelude::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 
 pub const N_K4_COORD_STATES: u32 = 4_u32.pow(15);
@@ -27,10 +23,36 @@ const_data!(pub I_MOVE_TABLE: [[u16; N_PHASE3_MOVES as usize]; N_I_COORD_STATES 
 const_data!(pub O_MOVE_TABLE: [[u16; N_PHASE3_MOVES as usize]; N_O_COORD_STATES as usize] = gen_o_move_table());
 const_data!(pub MOVE_AXIS: [Axis; N_PHASE1_MOVES as usize] = gen_move_axis_table());
 
-runtime_data!("C3.MOVE", pub static C3_MOVE_TABLE: [[u32; N_PHASE2_MOVES as usize]; N_C3_COORD_STATES as usize] = gen_c3_move_table());
+runtime_data!("C3.MOVE", pub static C3_MOVE_TABLE: Box<[[u32; N_PHASE2_MOVES as usize]; N_C3_COORD_STATES as usize]> = gen_c3_move_table());
 
-#[allow(unused)]
+#[cfg(feature = "gen-const-data")]
+#[test]
+fn generate_io_move_table() {
+    let _ = &*IO_MOVE_TABLE;
+}
+
+#[cfg(feature = "gen-const-data")]
+#[test]
+fn generate_i_move_table() {
+    let _ = &*I_MOVE_TABLE;
+}
+
+#[cfg(feature = "gen-const-data")]
+#[test]
+fn generate_o_move_table() {
+    let _ = &*O_MOVE_TABLE;
+}
+
+#[cfg(feature = "gen-const-data")]
+#[test]
+fn generate_move_axis_table() {
+    let _ = &*MOVE_AXIS;
+}
+
+#[cfg(feature = "gen-const-data")]
 fn gen_move_axis_table() -> Box<[Axis; N_PHASE1_MOVES as usize]> {
+    use crate::cubiecube::cubiecube::HYPERSOLVE_TWISTS;
+    use itertools::Itertools;
     HYPERSOLVE_TWISTS
         .iter()
         .map(|&twist| twist.axis())
@@ -39,7 +61,6 @@ fn gen_move_axis_table() -> Box<[Axis; N_PHASE1_MOVES as usize]> {
         .unwrap()
 }
 
-#[allow(unused)]
 fn gen_c3_move_table() -> Box<[[u32; N_PHASE2_MOVES as usize]; N_C3_COORD_STATES as usize]> {
     let mut table = vec![[0_u32; N_PHASE2_MOVES as usize]; N_C3_COORD_STATES as usize];
 
@@ -57,7 +78,7 @@ fn gen_c3_move_table() -> Box<[[u32; N_PHASE2_MOVES as usize]; N_C3_COORD_STATES
     table.try_into().unwrap()
 }
 
-#[allow(unused)]
+#[cfg(feature = "gen-const-data")]
 fn gen_io_move_table() -> Box<[[u16; N_PHASE2_MOVES as usize]; N_IO_COORD_STATES as usize]> {
     let mut table = vec![[0_u16; N_PHASE2_MOVES as usize]; N_IO_COORD_STATES as usize];
 
@@ -75,7 +96,7 @@ fn gen_io_move_table() -> Box<[[u16; N_PHASE2_MOVES as usize]; N_IO_COORD_STATES
     table.try_into().unwrap()
 }
 
-#[allow(unused)]
+#[cfg(feature = "gen-const-data")]
 fn gen_i_move_table() -> Box<[[u16; N_PHASE3_MOVES as usize]; N_I_COORD_STATES as usize]> {
     let mut table = vec![[0_u16; N_PHASE3_MOVES as usize]; N_I_COORD_STATES as usize];
 
@@ -93,7 +114,7 @@ fn gen_i_move_table() -> Box<[[u16; N_PHASE3_MOVES as usize]; N_I_COORD_STATES a
     table.try_into().unwrap()
 }
 
-#[allow(unused)]
+#[cfg(feature = "gen-const-data")]
 fn gen_o_move_table() -> Box<[[u16; N_PHASE3_MOVES as usize]; N_O_COORD_STATES as usize]> {
     let mut table = vec![[0_u16; N_PHASE3_MOVES as usize]; N_O_COORD_STATES as usize];
 
@@ -221,11 +242,11 @@ impl Node for Phase2Node {
         (self.io_coord as usize) * (N_C3_COORD_STATES as usize) + (self.c3_coord as usize)
     }
 
-    fn from_index(index: usize, _last_axis: Option<Axis>) -> Self {
+    fn from_index(index: usize, last_axis: Option<Axis>) -> Self {
         Phase2Node {
             c3_coord: (index % N_C3_COORD_STATES as usize) as u32,
             io_coord: (index / N_C3_COORD_STATES as usize) as u16,
-            last_axis: None,
+            last_axis,
         }
     }
 

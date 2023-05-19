@@ -1,4 +1,6 @@
-use std::collections::HashMap;
+use lazy_static::__Deref;
+use serde::{Deserialize, Serialize};
+use std::{collections::HashMap, ops::DerefMut};
 
 use crate::node_cube::node::Node;
 
@@ -19,7 +21,7 @@ pub trait PruningTable<T: Node> {
     fn finalize(&mut self);
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct HashMapPruningTable {
     pub data: HashMap<usize, u8>,
     pub max_depth: u8,
@@ -54,11 +56,29 @@ impl<T: Node> PruningTable<T> for HashMapPruningTable {
     }
 }
 
-pub type ArrayPruningTable = Box<[u8]>;
+pub struct ArrayPruningTable<const LENGTH: usize>(Box<[u8; LENGTH]>);
 
-impl<T: Node> PruningTable<T> for ArrayPruningTable {
+impl<const LENGTH: usize> __Deref for ArrayPruningTable<LENGTH> {
+    type Target = [u8; LENGTH];
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<const LENGTH: usize> DerefMut for ArrayPruningTable<LENGTH> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl<T: Node, const LENGTH: usize> PruningTable<T> for ArrayPruningTable<LENGTH> {
     fn new(max_depth: u8) -> Self {
-        vec![max_depth + 1; T::N_STATES].into_boxed_slice()
+        Self(
+            vec![max_depth + 1; LENGTH]
+                .into_boxed_slice()
+                .try_into()
+                .unwrap(),
+        )
     }
 
     fn set_depth(&mut self, node: T, depth: u8) {
@@ -74,7 +94,6 @@ impl<T: Node> PruningTable<T> for ArrayPruningTable {
     fn finalize(&mut self) {}
 }
 
-// TODO: check that behavior is correct
 struct DepthQueue<T> {
     pub depth: u8,
     pop_from_first: bool,
@@ -120,7 +139,6 @@ impl<T> DepthQueue<T> {
 
         self.pop_from_first = !self.pop_from_first;
         self.depth += 1;
-        println!("depth: {}", self.depth);
         return self.pop();
     }
 
@@ -160,15 +178,17 @@ pub fn gen_pruning_table<P: PruningTable<N>, N: Node>(max_depth: u8) -> P {
 }
 
 #[test]
-fn test_phase1_pruning_table_gen() {
+fn test_phase1_pruning_table() {
     use crate::node_cube::node::Phase1Node;
     let pruning_table = gen_pruning_table::<HashMapPruningTable, Phase1Node>(2);
+    // Should have found 166 nodes
     assert_eq!(pruning_table.data.len(), 166);
 }
 
 #[test]
-fn test_phase3_pruning_table_gen() {
+fn test_phase3_pruning_table() {
     use crate::node_cube::node::Phase3Node;
     let pruning_table = gen_pruning_table::<HashMapPruningTable, Phase3Node>(2);
+    // Should have found 70 nodes
     assert_eq!(pruning_table.data.len(), 70);
 }

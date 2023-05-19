@@ -1,13 +1,11 @@
 /// Lazily loads data from a file at runtime or generates the data if not found
 ///
 /// Example:
-/// '''runtime_data!("filename",
-///    pub static DATA: type = generation()
-/// );'''
-///
-/// generation() must return Box<type>
+/// const_data!(
+///    pub TEST_DATA: type = complex_runtime_calculation()
+/// );
 macro_rules! runtime_data {
-    ($filename:literal, pub static $name:ident: $type:ty = $expr:expr) => {
+    ($filename:literal, pub static $name:ident: Box<$type:ty> = $expr:expr) => {
         pub static $name: once_cell::sync::Lazy<Box<$type>> = once_cell::sync::Lazy::new(|| {
             // size of the object
             const SIZE: usize = std::mem::size_of::<$type>();
@@ -97,8 +95,6 @@ macro_rules! runtime_data {
 /// const_data!(
 ///    pub TEST_DATA: type = complex_runtime_calculation()
 /// );
-///
-/// complex_runtime_calculation() must return Box<type>
 #[cfg(feature = "gen-const-data")]
 macro_rules! const_data {
     (pub $name:ident: $type:ty = $expr:expr) => {

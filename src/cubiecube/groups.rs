@@ -309,6 +309,12 @@ const_data!(
     }
 );
 
+#[cfg(feature = "gen-const-data")]
+#[test]
+fn generate_a4_mul_table() {
+    let _ = &*A4_MUL_TABLE;
+}
+
 /// Indexed as [left][right]
 // const A4_MUL_TABLE: [[A4; 12]; 12] = {
 //     use A4::*;
@@ -408,6 +414,12 @@ const_data!(
         result
     }
 );
+
+#[cfg(feature = "gen-const-data")]
+#[test]
+fn generate_a4_k4_mul_table() {
+    let _ = &*A4_K4_MUL_TABLE;
+}
 
 impl Mul<K4> for A4 {
     type Output = K4;
