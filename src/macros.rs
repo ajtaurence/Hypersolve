@@ -170,3 +170,12 @@ macro_rules! const_data {
         };
     };
 }
+
+/// Evaluates the macro on every comma separated value
+macro_rules! for_each {
+    ($macro:ident!($($x:ident),*)) => {
+        $(
+            $macro!($x);
+        )*
+    };
+}

@@ -1,12 +1,11 @@
 use std::collections::HashMap;
 
-use cgmath::{InnerSpace, Vector3, Vector4};
 use itertools::iproduct;
 use lazy_static::lazy_static;
 use num_enum::FromPrimitive;
 use strum::{EnumIter, IntoEnumIterator};
 
-use super::*;
+use crate::common::{Axis, Face, Sign, Vector3, Vector4};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, FromPrimitive)]
 #[repr(u8)]
@@ -107,16 +106,17 @@ impl Twist {
                 itertools::iproduct!([-1, 0, 1], [-1, 0, 1], [-1, 0, 1]).map(|(x, y, z)| [x, y, z]);
             let corners = piece_locations
                 .clone()
-                .filter(|v| Vector3::from(*v).magnitude2() == 3);
+                .filter(|v| Vector3::<i32>::from_slice(*v).magnitude_squared::<i32>() == 3);
             let edges = piece_locations
                 .clone()
-                .filter(|v| Vector3::from(*v).magnitude2() == 2);
-            let centers = piece_locations.filter(|v| Vector3::from(*v).magnitude2() == 1);
+                .filter(|v| Vector3::<i32>::from(*v).magnitude_squared::<i32>() == 2);
+            let centers = piece_locations
+                .filter(|v| Vector3::<i32>::from(*v).magnitude_squared::<i32>() == 1);
             let core = std::iter::once([0, 0, 0]);
             let mc4d_order_piece_locations = corners.chain(edges).chain(centers).chain(core);
 
             mc4d_order_piece_locations
-                .map(move |mc4d_coords_of_sticker_within_face: [i8; 3]| {
+                .map(move |mc4d_coords_of_sticker_within_face: [i32; 3]| {
                     let mut offset = [0; 4];
                     for i in 0..3 {
                         offset[basis[i].axis() as usize] += mc4d_coords_of_sticker_within_face[i];
@@ -134,12 +134,12 @@ impl Twist {
         })
     }
 
-    fn signs_within_face(face: Face, piece_loc_signs: Vector4<i8>) -> Vector3<i8> {
+    fn signs_within_face(face: Face, piece_loc_signs: Vector4<i32>) -> Vector3<i32> {
         let [basis1, basis2, basis3] = face.basis();
-        cgmath::vec3(
-            piece_loc_signs.dot(basis1.cast().unwrap()),
-            piece_loc_signs.dot(basis2.cast().unwrap()),
-            piece_loc_signs.dot(basis3.cast().unwrap()),
+        vector!(
+            piece_loc_signs.dot(basis1),
+            piece_loc_signs.dot(basis2),
+            piece_loc_signs.dot(basis3)
         )
     }
 
@@ -291,10 +291,10 @@ impl TwistDirectionEnum {
         }
     }
 
-    fn from_signs_within_face(v: Vector3<i8>) -> Option<Self> {
+    fn from_signs_within_face(v: Vector3<i32>) -> Option<Self> {
         use TwistDirectionEnum::*;
 
-        match [v.x, v.y, v.z] {
+        match v.0 {
             [1, 1, 1] => Some(UFR),
             [-1, 1, 1] => Some(UFL),
             [1, -1, 1] => Some(DFR),

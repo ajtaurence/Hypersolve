@@ -1,18 +1,47 @@
-use lazy_static::__Deref;
+use lazy_static::{__Deref, lazy_static};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, ops::DerefMut};
+use std::{
+    collections::HashMap,
+    marker::PhantomData,
+    ops::{Add, DerefMut},
+};
 
-use crate::node_cube::node::Node;
+use crate::{
+    node_cube::node::Node,
+    phases::{Phase, Phase1, Phase2, Phase3},
+};
 
-pub trait PruningTable<T: Node> {
+lazy_static! {
+    pub static ref PHASE1_PRUNING_TABLE: ArrayPruningTable<Phase1> = gen_pruning_table(4);
+    pub static ref PHASE2_PRUNING_TABLE: HashMapPruningTable<Phase2> = gen_pruning_table(4);
+    pub static ref PHASE3_PRUNING_TABLE: ArrayPruningTable<Phase3> = gen_pruning_table(12);
+}
+
+pub trait PruningTable {
+    type Phase: Phase;
     /// Creates an empty pruning table for the given phase
     fn new(max_depth: u8) -> Self;
 
     /// Set the depth of the node
-    fn set_depth(&mut self, node: T, depth: u8);
+    fn set_depth(&mut self, node: <<Self as PruningTable>::Phase as Phase>::Node, depth: u8);
 
-    /// Gets the depth of the node
-    fn get_depth(&self, node: T) -> u8;
+    /// Gets a lower bound on the depth of the node
+    fn get_depth(&self, node: <<Self as PruningTable>::Phase as Phase>::Node) -> u8;
+
+    /// Gets the depth and returns whether the depth is exact or bounded
+    fn get_exact_or_bounded_depth(
+        &self,
+        node: <<Self as PruningTable>::Phase as Phase>::Node,
+    ) -> ExactOrBound<u8> {
+        let depth = self.get_depth(node);
+        match depth < self.get_max_depth() {
+            true => ExactOrBound::Exact(depth),
+            false => ExactOrBound::LowerBound(depth),
+        }
+    }
+
+    /// Gets the max depth if all states were found before the maximum depth
+    fn get_max_depth(&self) -> u8;
 
     /// Updates the max depth if all states were found before the maximum depth
     fn update_max_depth(&mut self, new_max_depth: u8);
@@ -21,29 +50,77 @@ pub trait PruningTable<T: Node> {
     fn finalize(&mut self);
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct HashMapPruningTable {
-    pub data: HashMap<usize, u8>,
-    pub max_depth: u8,
+/// Represents an exact value or a lower bound value
+pub enum ExactOrBound<T> {
+    Exact(T),
+    LowerBound(T),
 }
 
-impl<T: Node> PruningTable<T> for HashMapPruningTable {
-    // Maybe add initialization capacity?
+impl<T> ExactOrBound<T> {
+    pub fn into_inner(self) -> T {
+        use ExactOrBound::*;
+        match self {
+            Exact(value) => value,
+            LowerBound(value) => value,
+        }
+    }
+
+    pub fn is_exact(&self) -> bool {
+        use ExactOrBound::*;
+        match self {
+            Exact(_) => true,
+            LowerBound(_) => false,
+        }
+    }
+
+    pub fn is_bound(&self) -> bool {
+        use ExactOrBound::*;
+        match self {
+            Exact(_) => false,
+            LowerBound(_) => true,
+        }
+    }
+}
+
+impl<T: Add<Output = T>> Add for ExactOrBound<T> {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self::Output {
+        use ExactOrBound::*;
+        match (self, rhs) {
+            (Exact(a), Exact(b)) => Exact(a + b),
+            (Exact(a), LowerBound(b)) => LowerBound(a + b),
+            (LowerBound(a), Exact(b)) => LowerBound(a + b),
+            (LowerBound(a), LowerBound(b)) => LowerBound(a + b),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct HashMapPruningTable<T: Phase> {
+    pub data: HashMap<usize, u8>,
+    pub max_depth: u8,
+    phantom: PhantomData<T>,
+}
+
+impl<T: Phase> PruningTable for HashMapPruningTable<T> {
+    type Phase = T;
+    // TODO: Maybe add initialization capacity?
     fn new(max_depth: u8) -> Self {
         HashMapPruningTable {
             data: HashMap::<usize, u8>::new(),
             max_depth,
+            phantom: PhantomData,
         }
     }
 
-    fn get_depth(&self, node: T) -> u8 {
+    fn get_depth(&self, node: T::Node) -> u8 {
         match self.data.get(&node.get_index()) {
             Some(&depth) => depth,
             None => self.max_depth + 1,
         }
     }
 
-    fn set_depth(&mut self, node: T, depth: u8) {
+    fn set_depth(&mut self, node: T::Node, depth: u8) {
         self.data.insert(node.get_index(), depth);
     }
 
@@ -51,45 +128,63 @@ impl<T: Node> PruningTable<T> for HashMapPruningTable {
         self.max_depth = new_max_depth;
     }
 
+    fn get_max_depth(&self) -> u8 {
+        self.max_depth
+    }
+
     fn finalize(&mut self) {
         self.data.shrink_to_fit()
     }
 }
 
-pub struct ArrayPruningTable<const LENGTH: usize>(Box<[u8; LENGTH]>);
+pub struct ArrayPruningTable<T: Phase> {
+    data: Box<[u8]>,
+    max_depth: u8,
+    phantom: PhantomData<T>,
+}
 
-impl<const LENGTH: usize> __Deref for ArrayPruningTable<LENGTH> {
-    type Target = [u8; LENGTH];
+impl<T: Phase> __Deref for ArrayPruningTable<T> {
+    type Target = [u8];
     fn deref(&self) -> &Self::Target {
-        &self.0
+        &self.data
     }
 }
 
-impl<const LENGTH: usize> DerefMut for ArrayPruningTable<LENGTH> {
+impl<T: Phase> DerefMut for ArrayPruningTable<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
+        &mut self.data
     }
 }
 
-impl<T: Node, const LENGTH: usize> PruningTable<T> for ArrayPruningTable<LENGTH> {
+impl<T: Phase> PruningTable for ArrayPruningTable<T> {
+    type Phase = T;
+
     fn new(max_depth: u8) -> Self {
-        Self(
-            vec![max_depth + 1; LENGTH]
+        Self {
+            data: vec![max_depth + 1; T::N_STATES]
                 .into_boxed_slice()
                 .try_into()
                 .unwrap(),
-        )
+            max_depth,
+            phantom: PhantomData,
+        }
     }
 
-    fn set_depth(&mut self, node: T, depth: u8) {
+    fn set_depth(&mut self, node: T::Node, depth: u8) {
         self[node.get_index()] = depth;
     }
 
-    fn get_depth(&self, node: T) -> u8 {
+    fn get_depth(&self, node: T::Node) -> u8 {
         self[node.get_index()]
     }
 
-    fn update_max_depth(&mut self, _new_max_depth: u8) {}
+    fn get_max_depth(&self) -> u8 {
+        self.max_depth
+    }
+
+    fn update_max_depth(&mut self, new_max_depth: u8) {
+        self.max_depth = new_max_depth
+    }
 
     fn finalize(&mut self) {}
 }
@@ -138,6 +233,7 @@ impl<T> DepthQueue<T> {
         }
 
         self.pop_from_first = !self.pop_from_first;
+        println!("depth: {:?}", self.depth);
         self.depth += 1;
         return self.pop();
     }
@@ -147,13 +243,13 @@ impl<T> DepthQueue<T> {
     }
 }
 
-pub fn gen_pruning_table<P: PruningTable<N>, N: Node>(max_depth: u8) -> P {
+pub fn gen_pruning_table<P: PruningTable<Phase = T>, T: Phase>(max_depth: u8) -> P {
     let mut pruning_table = P::new(max_depth);
 
-    let mut queue = DepthQueue::<N>::new();
+    let mut queue = DepthQueue::<T::Node>::new();
 
-    let goal = N::goal();
-    pruning_table.set_depth(N::goal(), 0);
+    let goal = T::Node::goal();
+    pruning_table.set_depth(<<P as PruningTable>::Phase as Phase>::Node::goal(), 0);
     queue.push(goal);
 
     loop {
@@ -179,16 +275,14 @@ pub fn gen_pruning_table<P: PruningTable<N>, N: Node>(max_depth: u8) -> P {
 
 #[test]
 fn test_phase1_pruning_table() {
-    use crate::node_cube::node::Phase1Node;
-    let pruning_table = gen_pruning_table::<HashMapPruningTable, Phase1Node>(2);
+    let pruning_table = gen_pruning_table::<HashMapPruningTable<_>, Phase1>(2);
     // Should have found 166 nodes
     assert_eq!(pruning_table.data.len(), 166);
 }
 
 #[test]
 fn test_phase3_pruning_table() {
-    use crate::node_cube::node::Phase3Node;
-    let pruning_table = gen_pruning_table::<HashMapPruningTable, Phase3Node>(2);
+    let pruning_table = gen_pruning_table::<HashMapPruningTable<_>, Phase3>(2);
     // Should have found 70 nodes
     assert_eq!(pruning_table.data.len(), 70);
 }

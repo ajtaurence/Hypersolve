@@ -1,11 +1,15 @@
 use crate::{
+    common::Axis,
     cubiecube::{
-        cubiecube::{CubieCube, Orientation, Permutation, A4_MOVE_TABLE, PERM_MOVE_TABLE},
-        groups::K4,
+        cubiecube::{
+            CubieCube, Move, MoveIterator, Orientation, Permutation, A4_MOVE_TABLE, PERM_MOVE_TABLE,
+        },
+        groups::{Identity, K4},
     },
     math,
-    piece_cube::pieces::Axis,
+    phases::{Phase, Phase1, Phase2, Phase3},
 };
+use itertools::Itertools;
 use rayon::prelude::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 
 pub const N_K4_COORD_STATES: u32 = 4_u32.pow(15);
@@ -14,16 +18,12 @@ pub const N_IO_COORD_STATES: u16 = math::n_choose_k(15, 7);
 pub const N_I_COORD_STATES: u16 = math::factorial(8) as u16;
 pub const N_O_COORD_STATES: u16 = math::factorial(7) as u16;
 
-pub const N_PHASE1_MOVES: u8 = 92;
-pub const N_PHASE2_MOVES: u8 = 44;
-pub const N_PHASE3_MOVES: u8 = 12;
+const_data!(pub IO_MOVE_TABLE: [[u16; Phase2::N_MOVES ]; N_IO_COORD_STATES as usize] = gen_io_move_table());
+const_data!(pub I_MOVE_TABLE: [[u16;  Phase3::N_MOVES]; N_I_COORD_STATES as usize] = gen_i_move_table());
+const_data!(pub O_MOVE_TABLE: [[u16;  Phase3::N_MOVES]; N_O_COORD_STATES as usize] = gen_o_move_table());
+const_data!(pub MOVE_AXIS: [Axis;  Phase1::N_MOVES] = gen_move_axis_table());
 
-const_data!(pub IO_MOVE_TABLE: [[u16; N_PHASE2_MOVES as usize]; N_IO_COORD_STATES as usize] = gen_io_move_table());
-const_data!(pub I_MOVE_TABLE: [[u16; N_PHASE3_MOVES as usize]; N_I_COORD_STATES as usize] = gen_i_move_table());
-const_data!(pub O_MOVE_TABLE: [[u16; N_PHASE3_MOVES as usize]; N_O_COORD_STATES as usize] = gen_o_move_table());
-const_data!(pub MOVE_AXIS: [Axis; N_PHASE1_MOVES as usize] = gen_move_axis_table());
-
-runtime_data!("C3.MOVE", pub static C3_MOVE_TABLE: Box<[[u32; N_PHASE2_MOVES as usize]; N_C3_COORD_STATES as usize]> = gen_c3_move_table());
+runtime_data!("C3.MOVE", pub static C3_MOVE_TABLE: Box<[[u32; Phase2::N_MOVES as usize]; N_C3_COORD_STATES as usize]> = gen_c3_move_table());
 
 #[cfg(feature = "gen-const-data")]
 #[test]
@@ -50,9 +50,8 @@ fn generate_move_axis_table() {
 }
 
 #[cfg(feature = "gen-const-data")]
-fn gen_move_axis_table() -> Box<[Axis; N_PHASE1_MOVES as usize]> {
+fn gen_move_axis_table() -> Box<[Axis; Phase1::N_MOVES]> {
     use crate::cubiecube::cubiecube::HYPERSOLVE_TWISTS;
-    use itertools::Itertools;
     HYPERSOLVE_TWISTS
         .iter()
         .map(|&twist| twist.axis())
@@ -61,8 +60,8 @@ fn gen_move_axis_table() -> Box<[Axis; N_PHASE1_MOVES as usize]> {
         .unwrap()
 }
 
-fn gen_c3_move_table() -> Box<[[u32; N_PHASE2_MOVES as usize]; N_C3_COORD_STATES as usize]> {
-    let mut table = vec![[0_u32; N_PHASE2_MOVES as usize]; N_C3_COORD_STATES as usize];
+fn gen_c3_move_table() -> Box<[[u32; Phase2::N_MOVES]; N_C3_COORD_STATES as usize]> {
+    let mut table = vec![[0_u32; Phase2::N_MOVES]; N_C3_COORD_STATES as usize];
 
     table.par_iter_mut().enumerate().for_each(|(i, entry)| {
         let cube = CubieCube {
@@ -70,7 +69,7 @@ fn gen_c3_move_table() -> Box<[[u32; N_PHASE2_MOVES as usize]; N_C3_COORD_STATES
             permutation: Permutation::solved(),
         };
 
-        for j in 0..(N_PHASE2_MOVES as usize) {
+        for j in 0..(Phase2::N_MOVES) {
             entry[j] = cube.apply_move(j).orientation.c3_coord();
         }
     });
@@ -79,8 +78,8 @@ fn gen_c3_move_table() -> Box<[[u32; N_PHASE2_MOVES as usize]; N_C3_COORD_STATES
 }
 
 #[cfg(feature = "gen-const-data")]
-fn gen_io_move_table() -> Box<[[u16; N_PHASE2_MOVES as usize]; N_IO_COORD_STATES as usize]> {
-    let mut table = vec![[0_u16; N_PHASE2_MOVES as usize]; N_IO_COORD_STATES as usize];
+fn gen_io_move_table() -> Box<[[u16; Phase2::N_MOVES]; N_IO_COORD_STATES as usize]> {
+    let mut table = vec![[0_u16; Phase2::N_MOVES]; N_IO_COORD_STATES as usize];
 
     table.par_iter_mut().enumerate().for_each(|(i, entry)| {
         let cube = CubieCube {
@@ -88,7 +87,7 @@ fn gen_io_move_table() -> Box<[[u16; N_PHASE2_MOVES as usize]; N_IO_COORD_STATES
             permutation: Permutation::from_coords(i as u16, 0, 0),
         };
 
-        for j in 0..(N_PHASE2_MOVES as usize) {
+        for j in 0..(Phase2::N_MOVES as usize) {
             entry[j] = cube.apply_move(j).permutation.io_coord();
         }
     });
@@ -97,8 +96,8 @@ fn gen_io_move_table() -> Box<[[u16; N_PHASE2_MOVES as usize]; N_IO_COORD_STATES
 }
 
 #[cfg(feature = "gen-const-data")]
-fn gen_i_move_table() -> Box<[[u16; N_PHASE3_MOVES as usize]; N_I_COORD_STATES as usize]> {
-    let mut table = vec![[0_u16; N_PHASE3_MOVES as usize]; N_I_COORD_STATES as usize];
+fn gen_i_move_table() -> Box<[[u16; Phase3::N_MOVES]; N_I_COORD_STATES as usize]> {
+    let mut table = vec![[0_u16; Phase3::N_MOVES]; N_I_COORD_STATES as usize];
 
     table.par_iter_mut().enumerate().for_each(|(i, entry)| {
         let cube = CubieCube {
@@ -106,7 +105,7 @@ fn gen_i_move_table() -> Box<[[u16; N_PHASE3_MOVES as usize]; N_I_COORD_STATES a
             permutation: Permutation::from_coords(0, i as u16, 0),
         };
 
-        for j in 0..(N_PHASE3_MOVES as usize) {
+        for j in 0..(Phase3::N_MOVES) {
             entry[j] = cube.apply_move(j).permutation.i_coord();
         }
     });
@@ -115,8 +114,8 @@ fn gen_i_move_table() -> Box<[[u16; N_PHASE3_MOVES as usize]; N_I_COORD_STATES a
 }
 
 #[cfg(feature = "gen-const-data")]
-fn gen_o_move_table() -> Box<[[u16; N_PHASE3_MOVES as usize]; N_O_COORD_STATES as usize]> {
-    let mut table = vec![[0_u16; N_PHASE3_MOVES as usize]; N_O_COORD_STATES as usize];
+fn gen_o_move_table() -> Box<[[u16; Phase3::N_MOVES]; N_O_COORD_STATES as usize]> {
+    let mut table = vec![[0_u16; Phase3::N_MOVES]; N_O_COORD_STATES as usize];
 
     table.par_iter_mut().enumerate().for_each(|(i, entry)| {
         let cube = CubieCube {
@@ -124,7 +123,7 @@ fn gen_o_move_table() -> Box<[[u16; N_PHASE3_MOVES as usize]; N_O_COORD_STATES a
             permutation: Permutation::from_coords(0, 0, i as u16),
         };
 
-        for j in 0..(N_PHASE3_MOVES as usize) {
+        for j in 0..(Phase3::N_MOVES) {
             entry[j] = cube.apply_move(j).permutation.o_coord();
         }
     });
@@ -132,35 +131,75 @@ fn gen_o_move_table() -> Box<[[u16; N_PHASE3_MOVES as usize]; N_O_COORD_STATES a
     table.try_into().unwrap()
 }
 
-pub trait Node: Default + PartialEq + Copy + From<CubieCube> {
+pub struct NodeIterator<N: Node> {
+    node: N,
+    move_iter: MoveIterator,
+}
+
+impl<N: Node> NodeIterator<N> {
+    pub const fn new(node: N) -> NodeIterator<N> {
+        NodeIterator {
+            node,
+            move_iter: N::Phase::MOVE_ITERATOR,
+        }
+    }
+}
+
+impl<N: Node> Iterator for NodeIterator<N> {
+    type Item = N;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.move_iter.next().map(|m| self.node.apply_move(m))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.move_iter.size_hint()
+    }
+}
+
+pub trait Node: Identity + PartialEq + Copy + From<CubieCube> {
     const N_STATES: usize;
+
+    type Phase: Phase;
 
     /// Returns the index of the node
     fn get_index(&self) -> usize;
 
     /// Returns a node from an index
-    fn from_index(index: usize, last_axis: Option<Axis>) -> Self;
+    fn from_index(index: usize, last_move: Option<Move>) -> Self;
 
-    /// Returns a vector of the nodes connected to this node
-    fn connected(&self) -> Vec<Self>
-    where
-        Self: Sized;
+    /// Returns a node from an index
+    fn last_move(&self) -> Option<Move>;
+
+    /// Applies the given move to the node
+    fn apply_move(self, move_index: Move) -> Self;
+
+    /// Returns a vector of the nodes connected to this node.
+    /// Omits nodes obtained by redundant moves (moves with the same axis as the last move's axis).
+    fn connected(&self) -> NodeIterator<Self> {
+        NodeIterator::new(*self)
+    }
+
+    /// Returns a vector of the nodes connected to this node.
+    /// Gives priority to the nodes obtained through moves with the same axis as the last move's axis.
+    fn connected_axis_priority(&self) -> Vec<Self> {
+        todo!()
+    }
 
     /// Returns whether the node is the goal node
     fn is_goal(&self) -> bool {
-        *self == Self::default()
+        *self == Self::IDENTITY
     }
 
     /// Returns the goal node
     fn goal() -> Self {
-        Self::default()
+        Self::IDENTITY
     }
 }
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Phase1Node {
     orientation: Orientation<K4>,
-    last_axis: Option<Axis>,
+    last_move: Option<Move>,
 }
 
 impl PartialEq for Phase1Node {
@@ -176,40 +215,44 @@ impl Phase1Node {
                 .orientation
                 .permute(PERM_MOVE_TABLE[i])
                 .apply_orientation(A4_MOVE_TABLE[i]),
-            last_axis: Some(MOVE_AXIS[i]),
+            last_move: Some(Move(i as u8)),
         }
     }
 }
 
+impl Identity for Phase1Node {
+    const IDENTITY: Self = Phase1Node {
+        orientation: Orientation::<K4>::IDENTITY,
+        last_move: None,
+    };
+}
+
 impl Node for Phase1Node {
     const N_STATES: usize = N_K4_COORD_STATES as usize;
+    type Phase = Phase1;
 
     fn get_index(&self) -> usize {
         self.orientation.k4_coord() as usize
     }
 
-    fn from_index(index: usize, last_axis: Option<Axis>) -> Self {
+    fn from_index(index: usize, last_move: Option<Move>) -> Self {
         Phase1Node {
             orientation: Orientation::<K4>::from_k4_coord(index as u32),
-            last_axis,
+            last_move,
         }
     }
 
-    // TODO: Improve move filtering
-    fn connected(&self) -> Vec<Self> {
-        PERM_MOVE_TABLE
-            .iter()
-            .zip(A4_MOVE_TABLE.iter())
-            .zip(MOVE_AXIS.into_iter())
-            .filter(|(_, axis)| Some(*axis) != self.last_axis)
-            .map(|((permutation, orientation), axis)| Phase1Node {
-                orientation: self
-                    .orientation
-                    .permute(*permutation)
-                    .apply_orientation(*orientation),
-                last_axis: Some(axis),
-            })
-            .collect()
+    fn last_move(&self) -> Option<Move> {
+        self.last_move
+    }
+
+    fn apply_move(self, move_index: Move) -> Self {
+        let perm = PERM_MOVE_TABLE[move_index.as_usize()];
+        let orien = A4_MOVE_TABLE[move_index.as_usize()];
+        Self {
+            orientation: self.orientation.permute(perm).apply_orientation(orien),
+            last_move: Some(move_index),
+        }
     }
 }
 
@@ -217,7 +260,7 @@ impl From<CubieCube> for Phase1Node {
     fn from(value: CubieCube) -> Self {
         Phase1Node {
             orientation: value.orientation.into(),
-            last_axis: None,
+            last_move: None,
         }
     }
 }
@@ -226,7 +269,7 @@ impl From<CubieCube> for Phase1Node {
 pub struct Phase2Node {
     c3_coord: u32,
     io_coord: u16,
-    last_axis: Option<Axis>,
+    last_move: Option<Move>,
 }
 
 impl PartialEq for Phase2Node {
@@ -235,34 +278,42 @@ impl PartialEq for Phase2Node {
     }
 }
 
+impl Identity for Phase2Node {
+    const IDENTITY: Self = Phase2Node {
+        c3_coord: 0,
+        io_coord: 0,
+        last_move: None,
+    };
+}
+
 impl Node for Phase2Node {
     const N_STATES: usize = N_C3_COORD_STATES as usize * N_IO_COORD_STATES as usize;
+    type Phase = Phase2;
 
     fn get_index(&self) -> usize {
         (self.io_coord as usize) * (N_C3_COORD_STATES as usize) + (self.c3_coord as usize)
     }
 
-    fn from_index(index: usize, last_axis: Option<Axis>) -> Self {
+    fn from_index(index: usize, last_move: Option<Move>) -> Self {
         Phase2Node {
             c3_coord: (index % N_C3_COORD_STATES as usize) as u32,
             io_coord: (index / N_C3_COORD_STATES as usize) as u16,
-            last_axis,
+            last_move,
         }
     }
 
-    // TODO: Improve move filtering
-    fn connected(&self) -> Vec<Self> {
-        C3_MOVE_TABLE[self.c3_coord as usize]
-            .iter()
-            .zip(IO_MOVE_TABLE[self.io_coord as usize].iter())
-            .zip(MOVE_AXIS.into_iter())
-            .filter(|(_, axis)| Some(*axis) != self.last_axis)
-            .map(|((&c3_coord, &io_coord), axis)| Phase2Node {
-                c3_coord,
-                io_coord,
-                last_axis: Some(axis),
-            })
-            .collect()
+    fn last_move(&self) -> Option<Move> {
+        self.last_move
+    }
+
+    fn apply_move(self, move_index: Move) -> Self {
+        let c3_coord = C3_MOVE_TABLE[self.c3_coord as usize][move_index.as_usize()];
+        let io_coord = IO_MOVE_TABLE[self.io_coord as usize][move_index.as_usize()];
+        Self {
+            c3_coord,
+            io_coord,
+            last_move: Some(move_index),
+        }
     }
 }
 
@@ -271,7 +322,7 @@ impl From<CubieCube> for Phase2Node {
         Phase2Node {
             c3_coord: value.orientation.c3_coord(),
             io_coord: value.permutation.io_coord(),
-            last_axis: None,
+            last_move: None,
         }
     }
 }
@@ -280,7 +331,7 @@ impl From<CubieCube> for Phase2Node {
 pub struct Phase3Node {
     i_coord: u16,
     o_coord: u16,
-    last_axis: Option<Axis>,
+    last_move: Option<Move>,
 }
 
 impl PartialEq for Phase3Node {
@@ -289,15 +340,24 @@ impl PartialEq for Phase3Node {
     }
 }
 
+impl Identity for Phase3Node {
+    const IDENTITY: Self = Phase3Node {
+        i_coord: 0,
+        o_coord: 0,
+        last_move: None,
+    };
+}
+
 impl Node for Phase3Node {
     const N_STATES: usize = N_I_COORD_STATES as usize * N_O_COORD_STATES as usize;
+    type Phase = Phase3;
 
     fn get_index(&self) -> usize {
         self.o_coord as usize * (N_I_COORD_STATES / 2) as usize
             + (self.i_coord % (N_I_COORD_STATES / 2)) as usize
     }
 
-    fn from_index(index: usize, last_axis: Option<Axis>) -> Self {
+    fn from_index(index: usize, last_move: Option<Move>) -> Self {
         let o_coord = (index / (N_I_COORD_STATES / 2) as usize) as u16;
         let mut i_coord = (index % (N_I_COORD_STATES / 2) as usize) as u16;
         if o_coord >= (N_O_COORD_STATES / 2) as u16 {
@@ -307,23 +367,22 @@ impl Node for Phase3Node {
         Phase3Node {
             i_coord,
             o_coord,
-            last_axis,
+            last_move,
         }
     }
 
-    // TODO: Improve move filtering
-    fn connected(&self) -> Vec<Self> {
-        I_MOVE_TABLE[self.i_coord as usize]
-            .iter()
-            .zip(O_MOVE_TABLE[self.o_coord as usize].iter())
-            .zip(MOVE_AXIS.into_iter())
-            .filter(|(_, axis)| Some(*axis) != self.last_axis)
-            .map(|((&i_coord, &o_coord), axis)| Phase3Node {
-                i_coord,
-                o_coord,
-                last_axis: Some(axis),
-            })
-            .collect()
+    fn last_move(&self) -> Option<Move> {
+        self.last_move
+    }
+
+    fn apply_move(self, move_index: Move) -> Self {
+        let i_coord = I_MOVE_TABLE[self.i_coord as usize][move_index.as_usize()];
+        let o_coord = O_MOVE_TABLE[self.o_coord as usize][move_index.as_usize()];
+        Self {
+            i_coord,
+            o_coord,
+            last_move: Some(move_index),
+        }
     }
 }
 
@@ -332,7 +391,7 @@ impl From<CubieCube> for Phase3Node {
         Phase3Node {
             i_coord: value.permutation.i_coord(),
             o_coord: value.permutation.o_coord(),
-            last_axis: None,
+            last_move: None,
         }
     }
 }

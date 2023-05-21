@@ -1,20 +1,26 @@
 //! Cube representation based on a permutation of all pieces and an orientation
 //! for each piece.
 
-use std::{fmt::Debug, ops::Mul};
+use std::{
+    fmt::Debug,
+    ops::{DerefMut, Mul, Range},
+};
 
+use lazy_static::__Deref;
 use num_traits::FromPrimitive;
 
 use super::*;
 use crate::{
+    common::Axis,
     math,
-    node_cube::node::{N_IO_COORD_STATES, N_I_COORD_STATES, N_O_COORD_STATES, N_PHASE1_MOVES},
+    node_cube::node::{MOVE_AXIS, N_IO_COORD_STATES, N_I_COORD_STATES, N_O_COORD_STATES},
+    phases::{Phase, Phase1},
     piece_cube::{puzzle::PieceCube, twist::Twist},
 };
 
-const_data!(pub HYPERSOLVE_TWISTS: [Twist; N_PHASE1_MOVES as usize] =  gen_hypersolve_twists());
-const_data!(pub PERM_MOVE_TABLE: [Permutation; N_PHASE1_MOVES as usize] =  gen_perm_move_table());
-const_data!(pub A4_MOVE_TABLE: [Orientation<A4>; N_PHASE1_MOVES as usize] =  gen_a4_move_table());
+const_data!(pub HYPERSOLVE_TWISTS: [Twist; Phase1::N_MOVES] =  gen_hypersolve_twists());
+const_data!(pub PERM_MOVE_TABLE: [Permutation; Phase1::N_MOVES] =  gen_perm_move_table());
+const_data!(pub A4_MOVE_TABLE: [Orientation<A4>; Phase1::N_MOVES] =  gen_a4_move_table());
 
 #[cfg(feature = "gen-const-data")]
 #[test]
@@ -36,7 +42,7 @@ fn generate_a4_move_table() {
 
 /// Calculates the twists that hypersolve uses to solve the cube
 #[cfg(feature = "gen-const-data")]
-fn gen_hypersolve_twists() -> Box<[Twist; N_PHASE1_MOVES as usize]> {
+fn gen_hypersolve_twists() -> Box<[Twist; Phase1::N_MOVES]> {
     use crate::piece_cube::pieces::PieceLocation;
     use itertools::Itertools;
     // Generate twist which dont affect LDBO (index 15) and perform unique actions on a cube
@@ -76,7 +82,7 @@ fn gen_hypersolve_twists() -> Box<[Twist; N_PHASE1_MOVES as usize]> {
 
 /// Calculates the permutation move table using piece_cube
 #[cfg(feature = "gen-const-data")]
-fn gen_perm_move_table() -> Box<[Permutation; N_PHASE1_MOVES as usize]> {
+fn gen_perm_move_table() -> Box<[Permutation; Phase1::N_MOVES]> {
     use itertools::Itertools;
     HYPERSOLVE_TWISTS
         .iter()
@@ -88,7 +94,7 @@ fn gen_perm_move_table() -> Box<[Permutation; N_PHASE1_MOVES as usize]> {
 
 /// Calculates the A4 orientation move table using piece_cube
 #[cfg(feature = "gen-const-data")]
-fn gen_a4_move_table() -> Box<[Orientation<A4>; N_PHASE1_MOVES as usize]> {
+fn gen_a4_move_table() -> Box<[Orientation<A4>; Phase1::N_MOVES]> {
     use itertools::Itertools;
     HYPERSOLVE_TWISTS
         .iter()
@@ -96,6 +102,69 @@ fn gen_a4_move_table() -> Box<[Orientation<A4>; N_PHASE1_MOVES as usize]> {
         .collect_vec()
         .try_into()
         .unwrap()
+}
+
+/// Hypersolve move index
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Move(pub u8);
+
+impl __Deref for Move {
+    type Target = u8;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for Move {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl Move {
+    pub fn as_u8(&self) -> u8 {
+        self.0
+    }
+
+    pub fn as_usize(&self) -> usize {
+        self.0 as usize
+    }
+
+    pub fn axis(&self) -> Axis {
+        MOVE_AXIS[self.as_usize()]
+    }
+}
+
+pub struct MoveIterator {
+    moves: Range<Move>,
+    current_move: Move,
+}
+
+impl MoveIterator {
+    pub const fn new(moves: Range<Move>) -> Self {
+        Self {
+            moves,
+            current_move: Move(0),
+        }
+    }
+}
+
+impl Iterator for MoveIterator {
+    type Item = Move;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.current_move == self.moves.end {
+            return None;
+        } else {
+            let result = self.current_move;
+            self.current_move = Move(self.current_move.as_u8() + 1);
+            return Some(result);
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining = self.moves.end.as_usize() - self.current_move.as_usize();
+        (remaining, Some(remaining))
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -378,6 +447,15 @@ impl Permutation {
 #[derive(Debug, PartialEq, Default, Clone, Copy)]
 pub struct Orientation<T> {
     pub state: [T; 15],
+}
+
+impl<T: Identity> Identity for Orientation<T>
+where
+    T: Identity,
+{
+    const IDENTITY: Self = Orientation {
+        state: [T::IDENTITY; 15],
+    };
 }
 
 impl<T: Identity + Debug + Copy + PartialEq + From<A4>> From<PieceCube> for Orientation<T> {
