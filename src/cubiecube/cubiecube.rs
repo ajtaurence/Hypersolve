@@ -9,7 +9,6 @@ use std::{
 use lazy_static::__Deref;
 use num_traits::FromPrimitive;
 
-use super::*;
 use crate::{
     common::Axis,
     groups::{Identity, A4, C3, K4},
@@ -260,11 +259,15 @@ impl Permutation {
             i_map[i] = self.map[i] % 8;
         }
 
-        let mut i_coord = if permutation_utils::is_odd(i_map) {
-            N_I_COORD_STATES / 2
-        } else {
-            0
-        };
+        let mut i_coord =
+            if crate::groups::Permutation::from_array_unchecked(i_map.map(|i| i as usize))
+                .parity()
+                .is_odd()
+            {
+                N_I_COORD_STATES / 2
+            } else {
+                0
+            };
 
         for i in 2..8 {
             i_coord += i_map[0..i]
@@ -285,11 +288,15 @@ impl Permutation {
             o_map[i - 8] = self.map[i] % 8;
         }
 
-        let mut o_coord = if permutation_utils::is_odd(o_map) {
-            N_O_COORD_STATES / 2
-        } else {
-            0
-        };
+        let mut o_coord =
+            if crate::groups::Permutation::from_array_unchecked(o_map.map(|i| i as usize))
+                .parity()
+                .is_odd()
+            {
+                N_O_COORD_STATES / 2
+            } else {
+                0
+            };
 
         for i in 2..7 {
             o_coord += o_map[0..i]
@@ -395,7 +402,11 @@ impl Permutation {
             coord -= left as u16 * (math::factorial(i) / 2) as u16;
         }
 
-        if permutation_utils::is_odd(permutation) != is_odd {
+        if crate::groups::Permutation::from_array_unchecked(permutation.map(|i| i as usize))
+            .parity()
+            .is_odd()
+            != is_odd
+        {
             permutation.swap(0, 1);
         }
 
@@ -437,7 +448,11 @@ impl Permutation {
             coord -= left as u16 * (math::factorial(i) / 2) as u16;
         }
 
-        if permutation_utils::is_odd(permutation) != is_odd {
+        if crate::groups::Permutation::from_array_unchecked(permutation.map(|i| i as usize))
+            .parity()
+            .is_odd()
+            != is_odd
+        {
             permutation.swap(0, 1);
         }
 
