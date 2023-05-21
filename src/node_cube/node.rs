@@ -1,11 +1,9 @@
 use crate::{
     common::Axis,
-    cubiecube::{
-        cubiecube::{
-            CubieCube, Move, MoveIterator, Orientation, Permutation, A4_MOVE_TABLE, PERM_MOVE_TABLE,
-        },
-        groups::{Identity, K4},
+    cubiecube::cubiecube::{
+        CubieCube, Move, MoveIterator, Orientation, Permutation, A4_MOVE_TABLE, PERM_MOVE_TABLE,
     },
+    groups::{Identity, K4},
     math,
     phases::{Phase, Phase1, Phase2, Phase3},
 };

@@ -1,4 +1,4 @@
-const fn compute_factorial(n: u64) -> u64 {
+pub const fn compute_factorial(n: u64) -> u64 {
     if n == 0 {
         return 1;
     } else {

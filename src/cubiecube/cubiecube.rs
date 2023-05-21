@@ -12,6 +12,7 @@ use num_traits::FromPrimitive;
 use super::*;
 use crate::{
     common::Axis,
+    groups::{Identity, A4, C3, K4},
     math,
     node_cube::node::{MOVE_AXIS, N_IO_COORD_STATES, N_I_COORD_STATES, N_O_COORD_STATES},
     phases::{Phase, Phase1},

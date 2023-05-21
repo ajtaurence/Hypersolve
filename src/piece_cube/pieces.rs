@@ -3,8 +3,10 @@ use std::{
     ops::{Index, IndexMut},
 };
 
-use crate::common::{Axis, Face, Sign};
-use crate::cubiecube::groups::{Parity, PermutationWord};
+use crate::{
+    common::{Axis, Face, Parity, Sign},
+    groups::Permutation,
+};
 
 use super::*;
 
@@ -59,8 +61,8 @@ impl Piece {
     }
 
     /// Returns the axis permutation of the piece in the "is replaced by format"
-    pub fn to_axis_permutation(&self) -> PermutationWord<4> {
-        PermutationWord(self.faces.map(|f| f.axis() as usize)).inverse()
+    pub fn to_axis_permutation(&self) -> Permutation<4> {
+        Permutation::from_array(self.faces.map(|f| f.axis() as usize)).inverse()
     }
 
     pub fn current_location(self) -> PieceLocation {
