@@ -1,5 +1,5 @@
 use crate::{
-    cubiecube::cubiecube::{Move, MoveIterator},
+    cubie_cube::{Move, MoveIterator},
     node_cube::node::{Node, Phase1Node, Phase2Node, Phase3Node},
 };
 

@@ -172,7 +172,7 @@ impl std::ops::Mul for A4 {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
 
     #[test]

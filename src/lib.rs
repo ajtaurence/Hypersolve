@@ -2,7 +2,7 @@
 mod macros;
 #[macro_use]
 pub mod common;
-pub mod cubiecube;
+pub mod cubie_cube;
 pub mod groups;
 pub mod math;
 pub mod node_cube;

@@ -116,7 +116,7 @@ impl TryFrom<Permutation<3>> for C3 {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
 
     #[test]

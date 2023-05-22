@@ -1,5 +1,5 @@
 use crate::{
-    cubiecube::cubiecube::Move,
+    cubie_cube::Move,
     node_cube::node::Node,
     prune::{PruningTable, PHASE2_PRUNING_TABLE},
 };

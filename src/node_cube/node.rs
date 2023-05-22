@@ -1,6 +1,6 @@
 use crate::{
     common::Axis,
-    cubiecube::cubiecube::{
+    cubie_cube::{
         CubieCube, Move, MoveIterator, Orientation, Permutation, A4_MOVE_TABLE, PERM_MOVE_TABLE,
     },
     groups::{Identity, K4},
@@ -49,7 +49,7 @@ fn generate_move_axis_table() {
 
 #[cfg(feature = "gen-const-data")]
 fn gen_move_axis_table() -> Box<[Axis; Phase1::N_MOVES]> {
-    use crate::cubiecube::cubiecube::HYPERSOLVE_TWISTS;
+    use crate::cubie_cube::HYPERSOLVE_TWISTS;
     HYPERSOLVE_TWISTS
         .iter()
         .map(|&twist| twist.axis())

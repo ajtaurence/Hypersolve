@@ -1,11 +1,12 @@
 use super::*;
 
-/// Permutation of elements in word form ("is replaced by" format).
+/// Permutation of elements in word form ("is replaced by" format). Forms the group symmetric group `SN`
 ///
 /// Multiplication takes the state on the right and acts on it with the state on the left.
 ///
-/// Permutation of 0 elements may not function as expected for all cases.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+/// # Warning
+/// Permutation of 0 elements may not function as expected for all cases and may even cause panics.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Permutation<const N: usize>([usize; N]);
 
 impl<const N: usize> std::fmt::Display for Permutation<N> {
@@ -279,7 +280,7 @@ impl<const N: usize> Permutation<N> {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
 
     #[test]
