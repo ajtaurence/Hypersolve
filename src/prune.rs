@@ -281,6 +281,13 @@ fn test_phase1_pruning_table() {
 }
 
 #[test]
+fn test_phase2_pruning_table() {
+    let pruning_table = gen_pruning_table::<HashMapPruningTable<_>, Phase2>(2);
+    // Should have found 152 nodes
+    assert_eq!(pruning_table.data.len(), 152);
+}
+
+#[test]
 fn test_phase3_pruning_table() {
     let pruning_table = gen_pruning_table::<HashMapPruningTable<_>, Phase3>(2);
     // Should have found 70 nodes

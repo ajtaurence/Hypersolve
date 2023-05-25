@@ -393,3 +393,25 @@ impl From<CubieCube> for Phase3Node {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_orientation_to_from_c3_coord() {
+        use crate::groups::A4;
+        for i in (0..N_C3_COORD_STATES).into_iter().step_by(10) {
+            let orientation: Orientation<A4> = Orientation::from_c3_coord(i).into();
+            assert_eq!(orientation.c3_coord(), i)
+        }
+    }
+
+    #[test]
+    fn test_permutation_to_from_io_coord() {
+        for i in 0..N_IO_COORD_STATES {
+            let permutation = Permutation::from_coords(i, 0, 0);
+            assert_eq!(permutation.io_coord(), i)
+        }
+    }
+}

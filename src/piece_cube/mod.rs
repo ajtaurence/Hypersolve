@@ -1,4 +1,4 @@
-// Much of the code for this modcule was taken from Hyperspeedcube: https://github.com/HactarCE/Hyperspeedcube
+// Much of the code for this module was taken from Hyperspeedcube: https://github.com/HactarCE/Hyperspeedcube
 
 pub mod pieces;
 pub mod puzzle;

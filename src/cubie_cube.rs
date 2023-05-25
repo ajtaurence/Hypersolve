@@ -3,10 +3,9 @@
 
 use std::{
     fmt::Debug,
-    ops::{DerefMut, Mul, Range},
+    ops::{Deref, DerefMut, Mul, Range},
 };
 
-use lazy_static::__Deref;
 use num_traits::FromPrimitive;
 
 use crate::{
@@ -108,7 +107,7 @@ fn gen_a4_move_table() -> Box<[Orientation<A4>; Phase1::N_MOVES]> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Move(pub u8);
 
-impl __Deref for Move {
+impl Deref for Move {
     type Target = u8;
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -344,9 +343,9 @@ impl Permutation {
             return result;
         }
 
-        let mut coord = N_IO_COORD_STATES - coord;
+        let mut coord = N_IO_COORD_STATES - 1 - coord;
 
-        let mut combination: [u8; 7] = [0; 7];
+        let mut array: [bool; 15] = [false; 15];
 
         for i in (0..7).rev() {
             let mut index = 8 + i;
@@ -356,12 +355,7 @@ impl Permutation {
             }
 
             coord -= math::n_choose_k(index, i + 1);
-            combination[i as usize] = index as u8;
-        }
-
-        let mut array: [bool; 15] = [false; 15];
-        for i in 0..7 {
-            array[combination[i] as usize] = true;
+            array[index as usize] = true;
         }
 
         array
@@ -568,13 +562,16 @@ impl Orientation<K4> {
     }
 }
 
-impl<T: Into<C3> + Copy> Orientation<T> {
+impl<T: Copy> Orientation<T>
+where
+    C3: From<T>,
+{
     /// Returns the index into the C3 move table
     pub fn c3_coord(self) -> u32 {
         let mut result: u32 = 0;
 
         for i in 0..14 {
-            result += Into::<C3>::into(self.state[i]) as u32 * u32::pow(2, i as u32);
+            result += C3::from(self.state[i]) as u32 * u32::pow(3, i as u32);
         }
 
         result
@@ -593,8 +590,9 @@ impl Orientation<C3> {
             coord /= 3;
         }
 
-        result[14] =
-            C3::from_u32(result[0..14].iter().map(|&value| value as u32).sum::<u32>() % 3).unwrap();
+        // fix parity of the last piece
+        let sum = result[0..14].iter().map(|&value| value as i32).sum::<i32>();
+        result[14] = C3::from_i32((-sum).rem_euclid(3)).unwrap();
 
         Orientation { state: result }
     }
@@ -647,12 +645,49 @@ impl CubieCube {
     }
 }
 
-#[test]
-fn test_cubiecube_twists() {
-    for i in 0..HYPERSOLVE_TWISTS.len() {
-        let cubiecube = CubieCube::from(PieceCube::solved()).apply_move(i);
-        let piececube = PieceCube::solved().twist(HYPERSOLVE_TWISTS[i]);
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-        assert!(cubiecube == CubieCube::from(piececube))
+    #[test]
+    fn test_cubie_cube_twists() {
+        for i in 0..HYPERSOLVE_TWISTS.len() {
+            let cubiecube = CubieCube::from(PieceCube::solved()).apply_move(i);
+            let piececube = PieceCube::solved().twist(HYPERSOLVE_TWISTS[i]);
+
+            assert!(cubiecube == CubieCube::from(piececube))
+        }
+    }
+
+    #[test]
+    fn test_phase2_pruning_table_with_cubie_cube() {
+        use crate::node_cube::node::{Node, Phase2Node};
+        use crate::phases::Phase2;
+        use itertools::Itertools;
+        use std::collections::HashSet;
+
+        let mut set = HashSet::new();
+        set.insert(Phase2Node::goal().get_index());
+
+        let mut one_move_states = Vec::new();
+
+        (0..Phase2::N_MOVES).into_iter().for_each(|move_index| {
+            let cube = CubieCube::solved().apply_move(move_index);
+            let phase2_node = Phase2Node::from(cube);
+            one_move_states.push(cube);
+            set.insert(phase2_node.get_index());
+        });
+
+        one_move_states
+            .into_iter()
+            .cartesian_product(0..Phase2::N_MOVES)
+            .for_each(|(cube, move_index)| {
+                let cube = cube.apply_move(move_index);
+                let phase2_node = Phase2Node::from(cube);
+                set.insert(phase2_node.get_index());
+            });
+
+        // Should have found 152 nodes
+        assert_eq!(set.len(), 152)
     }
 }
