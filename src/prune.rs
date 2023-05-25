@@ -194,6 +194,7 @@ struct DepthQueue<T> {
     pop_from_first: bool,
     queue1: Vec<T>,
     queue2: Vec<T>,
+    progress: indicatif::ProgressBar,
 }
 
 impl<T> DepthQueue<T> {
@@ -203,11 +204,19 @@ impl<T> DepthQueue<T> {
             pop_from_first: true,
             queue1: Vec::new(),
             queue2: Vec::new(),
+            progress: indicatif::ProgressBar::hidden(),
         }
     }
 
     pub fn is_empty(&self) -> bool {
         self.queue1.is_empty() && self.queue2.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        match self.pop_from_first {
+            false => self.queue1.len(),
+            true => self.queue2.len(),
+        }
     }
 
     pub fn push(&mut self, value: T) {
@@ -225,15 +234,25 @@ impl<T> DepthQueue<T> {
         };
 
         if !queue.is_empty() {
+            self.progress.inc(1);
             return queue.pop();
         }
 
         if self.is_empty() {
+            self.progress.finish();
             return None;
         }
 
+        self.progress.finish();
+        self.progress = indicatif::ProgressBar::new(self.len() as u64)
+            .with_message(format!("Searching depth {:?}", self.depth));
+        self.progress.set_style(
+            indicatif::ProgressStyle::with_template(
+                "{msg}: {percent}% of {human_len} nodes {bar:40} {eta}",
+            )
+            .unwrap(),
+        );
         self.pop_from_first = !self.pop_from_first;
-        println!("depth: {:?}", self.depth);
         self.depth += 1;
         return self.pop();
     }
