@@ -176,7 +176,7 @@ impl<const N: usize> Permutation<N> {
 
     /// Applies the given permutation to self: `other * self`
     pub const fn apply(self, other: Self) -> Self {
-        let mut result: [usize; N] = unsafe { std::mem::MaybeUninit::uninit().assume_init() };
+        let mut result = [0; N];
         let mut i = 0;
         while i < N {
             result[i] = self.0[other.0[i]];
@@ -187,7 +187,7 @@ impl<const N: usize> Permutation<N> {
 
     /// Returns the inverse of this permutation: `self^-1`
     pub const fn inverse(&self) -> Self {
-        let mut result: [usize; N] = unsafe { std::mem::MaybeUninit::uninit().assume_init() };
+        let mut result = [0; N];
         let mut i = 0;
         while i < N {
             result[self.0[i]] = i;
@@ -272,9 +272,7 @@ impl<const N: usize> Permutation<N> {
 
     // Returns a the permutation with entries at a and b swapped
     pub fn swap(mut self, a: usize, b: usize) -> Self {
-        let a_ptr = &mut self.0[a] as *mut usize;
-        let b_ptr = &mut self.0[b] as *mut usize;
-        unsafe { std::ptr::swap(a_ptr, b_ptr) };
+        self.0.swap(a, b);
         return self;
     }
 }

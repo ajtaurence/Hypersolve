@@ -7,7 +7,6 @@ use crate::{
     math,
     phases::{Phase, Phase1, Phase2, Phase3},
 };
-use itertools::Itertools;
 use rayon::prelude::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 
 pub const N_K4_COORD_STATES: u32 = 4_u32.pow(15);
@@ -50,6 +49,7 @@ fn generate_move_axis_table() {
 #[cfg(feature = "gen-const-data")]
 fn gen_move_axis_table() -> Box<[Axis; Phase1::N_MOVES]> {
     use crate::cubie_cube::HYPERSOLVE_TWISTS;
+    use itertools::Itertools;
     HYPERSOLVE_TWISTS
         .iter()
         .map(|&twist| twist.axis())
