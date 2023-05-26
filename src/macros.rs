@@ -107,11 +107,14 @@ macro_rules! const_data {
             use std::io::Write;
 
             let data = $expr;
+            std::fs::create_dir_all(concat!(env!("CARGO_MANIFEST_DIR"),
+            "\\const_data")).expect("unable to create const_data directory");
             let mut file =
-                std::fs::File::create(concat!("const_data/", concat!(stringify!($name), ".dat")))
-                    .expect("unable to write static data");
+                std::fs::File::create(concat!(env!("CARGO_MANIFEST_DIR"),
+                "\\const_data\\", stringify!($name), ".dat"))
+                    .expect("unable to write const data");
             file.write_all(unsafe { Transmute { obj: data.as_ref() }.bytes })
-                .expect("unable to write static data");
+                .expect("unable to write const data");
             data
         });
     };
@@ -125,11 +128,14 @@ macro_rules! const_data {
             use std::io::Write;
 
             let data = $expr;
+            std::fs::create_dir_all(concat!(env!("CARGO_MANIFEST_DIR"),
+            "\\const_data")).expect("unable to create const_data directory");
             let mut file =
-                std::fs::File::create(concat!("const_data/", concat!(stringify!($name), ".dat")))
-                    .expect("unable to write static data");
+                std::fs::File::create(concat!(env!("CARGO_MANIFEST_DIR"),
+                "\\const_data\\", stringify!($name), ".dat"))
+                    .expect("unable to write const data");
             file.write_all(unsafe { Transmute { obj: data.as_ref() }.bytes })
-                .expect("unable to write static data");
+                .expect("unable to write const data");
             data
         });
     };
