@@ -292,6 +292,93 @@ pub fn gen_pruning_table<P: PruningTable<Phase = T>, T: Phase>(max_depth: u8) ->
     return pruning_table;
 }
 
+pub fn explore<T: Phase>() -> bit_vec::BitVec {
+    use bit_vec::BitVec;
+    let mut bit_array = BitVec::from_elem(T::N_STATES, false);
+
+    let mut queue = DepthQueue::<T::Node>::new();
+
+    let goal = T::Node::goal();
+    queue.push(goal);
+
+    let mut num_count: u64 = 0;
+    // forward search mode
+    loop {
+        if let Some(node) = queue.pop() {
+            for new_node in node.connected().into_iter() {
+                if !bit_array[new_node.get_index()] {
+                    bit_array.set(new_node.get_index(), true);
+
+                    if queue.depth < 8 {
+                        queue.push(new_node);
+                    } else {
+                        num_count += 1;
+                    }
+                }
+            }
+        } else {
+            break;
+        }
+    }
+    println!("Depth: {}: {} nodes", queue.depth, num_count);
+
+    // reverse search mode
+    let mut depth = queue.depth;
+    loop {
+        depth += 1;
+        let mpb = indicatif::MultiProgress::new();
+
+        let progress = indicatif::ProgressBar::new(T::N_STATES as u64)
+            .with_message(format!("Searching depth {:?}", depth));
+        progress.set_style(
+            indicatif::ProgressStyle::with_template(
+                "{msg}: {percent}% of {human_len} nodes {bar:40} {eta}",
+            )
+            .unwrap(),
+        );
+        let progress = mpb.add(progress);
+
+        let count = indicatif::ProgressBar::new(T::N_STATES as u64);
+        count.set_style(
+            indicatif::ProgressStyle::with_template(
+                "{percent}% of {human_pos}/{human_len} nodes {bar:40} {eta}",
+            )
+            .unwrap(),
+        );
+
+        let count = mpb.add(count);
+
+        let mut flip_count: u64 = 0;
+
+        let last_bit_array = bit_array.clone();
+
+        for (i, bit) in last_bit_array.iter().enumerate() {
+            progress.inc(1);
+            if bit {
+                continue;
+            }
+
+            let node = T::Node::from_index(i, None);
+
+            for new_node in node.connected() {
+                if last_bit_array[new_node.get_index()] {
+                    flip_count += 1;
+                    count.inc(1);
+                    bit_array.set(i, true);
+                    break;
+                }
+            }
+        }
+        progress.abandon();
+        count.abandon();
+        println!("States found at depth {}: {}", depth, flip_count);
+
+        if bit_array.all() {
+            return bit_array;
+        }
+    }
+}
+
 #[test]
 fn test_phase1_pruning_table() {
     let pruning_table = gen_pruning_table::<HashMapPruningTable<_>, Phase1>(2);
