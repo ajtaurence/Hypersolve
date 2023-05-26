@@ -152,7 +152,12 @@ macro_rules! const_data {
                 obj: $type,
             }
             Transmute {
-                bytes: *include_bytes!(concat!("../../const_data/", stringify!($name), ".dat")),
+                bytes: *include_bytes!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "\\const_data\\",
+                    stringify!($name),
+                    ".dat"
+                )),
             }
             .obj
         };
@@ -164,7 +169,12 @@ macro_rules! const_data {
                 obj: $type,
             }
             Transmute {
-                bytes: *include_bytes!(concat!("../../const_data/", stringify!($name), ".dat")),
+                bytes: *include_bytes!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "\\const_data\\",
+                    stringify!($name),
+                    ".dat"
+                )),
             }
             .obj
         };
