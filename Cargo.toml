@@ -34,5 +34,5 @@ indicatif = "0.17.3"
 bit-vec = "0.6.3"
 
 [features]
-default = ["gen-const-data"]
+default = []
 gen-const-data = []

@@ -1,9 +1,9 @@
-use lazy_static::{__Deref, lazy_static};
+use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     marker::PhantomData,
-    ops::{Add, DerefMut},
+    ops::{Add, Deref, DerefMut},
 };
 
 use crate::{
@@ -143,7 +143,7 @@ pub struct ArrayPruningTable<T: Phase> {
     phantom: PhantomData<T>,
 }
 
-impl<T: Phase> __Deref for ArrayPruningTable<T> {
+impl<T: Phase> Deref for ArrayPruningTable<T> {
     type Target = [u8];
     fn deref(&self) -> &Self::Target {
         &self.data

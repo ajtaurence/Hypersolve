@@ -347,7 +347,7 @@ impl Identity for Phase3Node {
 }
 
 impl Node for Phase3Node {
-    const N_STATES: usize = N_I_COORD_STATES as usize * N_O_COORD_STATES as usize;
+    const N_STATES: usize = N_I_COORD_STATES as usize * N_O_COORD_STATES as usize / 2;
     type Phase = Phase3;
 
     fn get_index(&self) -> usize {
@@ -412,6 +412,22 @@ mod tests {
         for i in 0..N_IO_COORD_STATES {
             let permutation = Permutation::from_coords(i, 0, 0);
             assert_eq!(permutation.io_coord(), i)
+        }
+    }
+
+    #[test]
+    fn test_permutation_to_from_i_coord() {
+        for i in 0..N_I_COORD_STATES {
+            let permutation = Permutation::from_coords(0, i, 0);
+            assert_eq!(permutation.i_coord(), i)
+        }
+    }
+
+    #[test]
+    fn test_permutation_to_from_o_coord() {
+        for i in 0..N_O_COORD_STATES {
+            let permutation = Permutation::from_coords(0, 0, i);
+            assert_eq!(permutation.o_coord(), i)
         }
     }
 }
