@@ -1,6 +1,17 @@
 use super::*;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, strum_macros::EnumIter)]
+#[derive(
+    Debug,
+    Copy,
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    strum_macros::EnumIter,
+    strum_macros::EnumString,
+)]
 #[repr(u8)]
 pub enum Face {
     R,

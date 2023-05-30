@@ -1,19 +1,69 @@
-use clap::Parser;
-use hypersolve::{
-    phases::{Phase1, Phase2, Phase3},
-    prune::{explore, gen_pruning_table, ArrayPruningTable},
-};
+use clap::{Parser, Subcommand, ValueEnum};
+use hypersolve::{piece_cube::twist::Twist};
+use itertools::Itertools;
 
-/// Input an MC4D log file
 #[derive(Parser)]
+#[command(
+    author, 
+    version,
+    about, 
+    long_about = None,
+    help_template = "{about-section}{author}\n\n{usage-heading} {usage} \n\n{all-args} {tab}"
+)]
 struct Cli {
-    /// The path to the log file
-    path: std::path::PathBuf,
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    /// Solves a scramble
+    Solve {
+        /// Scramble moves
+        moves: Vec<Twist>,
+
+        /// Solution mode
+        #[arg(short, long, value_enum, default_value_t = SolveMode::Fast)]
+        mode: SolveMode,
+    },
+    /// Simplifies a move sequence
+    Simplify {
+        /// Scramble moves
+        moves: Vec<Twist>,
+
+        /// Simplification mode
+        #[arg(short, long, value_enum)]
+        mode: SimplifyMode,
+    },
+    /// Generates true random state scramble
+    Scramble {
+        /// Random state seed
+        #[arg(short, long)]
+        seed: Option<u64>,
+    },
+}
+
+#[derive(Clone, Copy, ValueEnum)]
+enum SolveMode {
+    /// Finds short solutions quickly
+    Fast,
+    /// Finds the optimal solution
+    Optimal,
+}
+
+#[derive(Clone, Copy, ValueEnum)]
+enum SimplifyMode {
+    /// Applies trivial simplifications such as combining moves where possible
+    Trivial,
+    /// Searches for equivalent but shorter move sequences
+    NonTrivial,
 }
 
 fn main() {
-    // let args = Cli::parse();
+    let args = Cli::parse();
 
-    let table = explore::<Phase2>();
-    println!("{:?}", table[0])
+    match args.command {
+        Commands::Solve { moves, mode: _ } => println!("{}", moves.into_iter().join(" ")),
+        _ => todo!()
+    }
 }

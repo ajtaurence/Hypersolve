@@ -1,3 +1,5 @@
+use crate::groups::Permutation;
+
 /// A fixed length vector of an arbitrary type.
 ///
 /// Supports elementwise operations.
@@ -17,6 +19,27 @@ where
             }
         }
         f.write_str(")")
+    }
+}
+
+impl<T, const N: usize> IntoIterator for Vector<T, N> {
+    type Item = T;
+    type IntoIter = std::array::IntoIter<T, N>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
+impl<T, const N: usize> std::ops::Index<usize> for Vector<T, N> {
+    type Output = T;
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.0[index]
+    }
+}
+
+impl<T, const N: usize> std::ops::IndexMut<usize> for Vector<T, N> {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.0[index]
     }
 }
 
@@ -89,7 +112,7 @@ impl<T, const N: usize> std::ops::DerefMut for Vector<T, N> {
 
 impl<T, const N: usize> From<[T; N]> for Vector<T, N> {
     fn from(value: [T; N]) -> Self {
-        Self::from_slice(value)
+        Self::from_array(value)
     }
 }
 
@@ -181,7 +204,7 @@ impl<T, const N: usize> Vector<T, N> {
         result
     }
 
-    pub const fn from_slice(slice: [T; N]) -> Self {
+    pub const fn from_array(slice: [T; N]) -> Self {
         Self(slice)
     }
 
@@ -243,6 +266,19 @@ impl<T, const N: usize> Vector<T, N> {
     {
         self.map(|i| i.into())
     }
+
+    /// Permutes the elements of the vector by the permutation
+    pub fn permute(self, permutation: Permutation<N>) -> Self
+    where
+        T: Clone,
+    {
+        let mut result = self.0.clone();
+
+        for i in 0..N {
+            result[i] = self.0[permutation.into_inner()[i]].clone();
+        }
+        Vector(result)
+    }
 }
 
 /// Dot product between two vectors.
@@ -261,7 +297,7 @@ macro_rules! vector {
     ($elem:expr;$n:expr) => (
         $ crate::common::Vector::<_,$n>::from_elem($elem)
     );
-    ($($x:expr),*) => ( crate::common::Vector::from_slice([$($x),*]) )
+    ($($x:expr),*) => ( crate::common::Vector::from_array([$($x),*]) )
 }
 
 // Cast a vector from one type of number to another
@@ -426,7 +462,7 @@ mod tests {
 
     #[test]
     fn vector_num_casting() {
-        let _: Vector<i8, 5> = Vector::<f32, 5>::from_slice([1., 0., 2., 5., -1.]).into();
-        let _: Vector<f64, 5> = Vector::<f32, 5>::from_slice([1., 0., 2., 5., -1.]).into();
+        let _: Vector<i8, 5> = Vector::<f32, 5>::from_array([1., 0., 2., 5., -1.]).into();
+        let _: Vector<f64, 5> = Vector::<f32, 5>::from_array([1., 0., 2., 5., -1.]).into();
     }
 }

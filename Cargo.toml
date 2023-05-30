@@ -1,8 +1,11 @@
 [package]
 name = "hypersolve"
+authors = ["Anderson Taurence <ajtaurence@gmail.com>"]
 version = "0.1.0"
 edition = "2021"
-description = "3-Phase 2^4 Rubik's cube solver"
+description = "An efficient 3-Phase 2^4 Rubik's Cube solver"
+license = "MIT"
+repository = "https://github.com/ajtaurence/Hypersolve/"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

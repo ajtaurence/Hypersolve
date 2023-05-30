@@ -1,16 +1,50 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, error::Error, str::FromStr};
 
 use itertools::iproduct;
 use lazy_static::lazy_static;
-use num_enum::FromPrimitive;
+use num_enum::{FromPrimitive, TryFromPrimitive};
 use strum::{EnumIter, IntoEnumIterator};
+use strum_macros::EnumString;
 
 use crate::common::{Axis, Face, Sign, Vector3, Vector4};
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, FromPrimitive)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TwistParseError {
+    MissingTwistId,
+    InvalidTwistId(String),
+    MissingTwistAmount,
+    InvalidTwistAmount(String),
+    MissingTwistSliceMask,
+    InvalidTwistSliceMask(String),
+    UnexpectedValue(String),
+}
+
+impl Error for TwistParseError {}
+
+impl std::fmt::Display for TwistParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let string = match self {
+            TwistParseError::MissingTwistId => "missing twist id".to_owned(),
+            TwistParseError::InvalidTwistId(id) => format!("invalid twist id: {}", id),
+            TwistParseError::MissingTwistAmount => "missing twist amount".to_owned(),
+            TwistParseError::InvalidTwistAmount(amount) => {
+                format!("invalid twist amount: {}", amount)
+            }
+            TwistParseError::MissingTwistSliceMask => "missing twist slice mask".to_owned(),
+            TwistParseError::InvalidTwistSliceMask(mask) => {
+                format!("invalid twist slice mask: {}", mask)
+            }
+            TwistParseError::UnexpectedValue(value) => {
+                format!("unexpected continuation: ,{}", value)
+            }
+        };
+        write!(f, "{}", string)
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, TryFromPrimitive)]
 #[repr(u8)]
 pub enum LayerEnum {
-    #[default]
     This = 1,
     Other = 2,
     Both = 3,
@@ -23,6 +57,19 @@ pub struct Twist {
     pub layer: LayerEnum,
 }
 
+impl std::fmt::Display for Twist {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.to_mc4d_string())
+    }
+}
+
+impl FromStr for Twist {
+    type Err = TwistParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Twist::from_mc4d_twist_string(s)
+    }
+}
+
 impl Twist {
     pub const fn axis(&self) -> Axis {
         self.face.axis()
@@ -32,7 +79,11 @@ impl Twist {
         self.face.sign()
     }
 
-    const fn new(face: Face, direction: TwistDirectionEnum, layer: LayerEnum) -> Twist {
+    pub fn is_cube_rotation(&self) -> bool {
+        self.layer == LayerEnum::Both
+    }
+
+    pub const fn new(face: Face, direction: TwistDirectionEnum, layer: LayerEnum) -> Twist {
         Twist {
             face,
             direction,
@@ -40,7 +91,9 @@ impl Twist {
         }
     }
 
-    pub fn from_mc4d_twist_string(s: &str) -> Option<Twist> {
+    pub fn from_mc4d_twist_string(s: &str) -> Result<Twist, TwistParseError> {
+        use TwistParseError::*;
+
         lazy_static! {
             static ref MC4D_TWISTS: Vec<Option<(Face, TwistDirectionEnum)>> =
                 Twist::mc4d_twist_order().collect();
@@ -48,21 +101,49 @@ impl Twist {
 
         let mut segments = s.split(',');
 
-        let (face, direction) = (*MC4D_TWISTS.get(segments.next()?.parse::<usize>().ok()?)?)?;
-        let direction: TwistDirectionEnum = direction.into();
-        let direction = match segments.next()?.parse::<i8>().ok()? {
+        let twist_id_string = segments.next().ok_or(MissingTwistId)?.to_owned();
+
+        let twist_id = twist_id_string
+            .parse::<usize>()
+            .or(Err(InvalidTwistId(twist_id_string.clone())))?;
+
+        let (face, direction) = MC4D_TWISTS
+            .get(twist_id)
+            .ok_or(InvalidTwistId(twist_id_string.clone()))?
+            .ok_or(InvalidTwistId(twist_id_string.clone()))?;
+
+        let twist_amount_string = segments.next().ok_or(MissingTwistAmount)?.to_owned();
+
+        let direction = match twist_amount_string
+            .parse::<i8>()
+            .or(Err(InvalidTwistAmount(twist_amount_string.clone())))?
+        {
             1 => direction,
-            2 => direction.double()?,
+            2 => direction
+                .double()
+                .ok_or(InvalidTwistAmount(twist_amount_string.clone()))?,
             -1 => direction.rev(),
-            -2 => direction.rev().double()?,
-            _ => return None,
+            -2 => direction
+                .rev()
+                .double()
+                .ok_or(InvalidTwistAmount(twist_amount_string.clone()))?,
+            _ => return Err(TwistParseError::InvalidTwistAmount(twist_amount_string)),
         };
 
-        let layer = LayerEnum::from_primitive(segments.next()?.parse().ok()?);
-        if segments.next().is_some() {
-            return None;
+        let slice_mask_string = segments.next().ok_or(MissingTwistSliceMask)?.to_owned();
+
+        let layer = LayerEnum::try_from_primitive(
+            slice_mask_string
+                .parse()
+                .or(Err(InvalidTwistSliceMask(slice_mask_string.clone())))?,
+        )
+        .or(Err(InvalidTwistSliceMask(slice_mask_string)))?;
+
+        let next_string = segments.next();
+        if let Some(value) = next_string {
+            return Err(UnexpectedValue(value.to_owned()));
         }
-        Some(Twist::new(face, direction, layer))
+        Ok(Twist::new(face, direction, layer))
     }
 
     pub fn to_mc4d_string(mut self: Twist) -> String {
@@ -106,7 +187,7 @@ impl Twist {
                 itertools::iproduct!([-1, 0, 1], [-1, 0, 1], [-1, 0, 1]).map(|(x, y, z)| [x, y, z]);
             let corners = piece_locations
                 .clone()
-                .filter(|v| Vector3::<i32>::from_slice(*v).magnitude_squared::<i32>() == 3);
+                .filter(|v| Vector3::<i32>::from_array(*v).magnitude_squared::<i32>() == 3);
             let edges = piece_locations
                 .clone()
                 .filter(|v| Vector3::<i32>::from(*v).magnitude_squared::<i32>() == 2);
@@ -151,7 +232,7 @@ impl Twist {
 
 // From Hyperspeedcube
 // https://github.com/HactarCE/Hyperspeedcube/blob/645bbd3e88eec62d25a22c835a7174a0b2f44f99/src/piecepuzzle/common.rs
-#[derive(FromPrimitive, Debug, Default, Copy, Clone, PartialEq, Eq, Hash, EnumIter)]
+#[derive(FromPrimitive, Debug, Default, Copy, Clone, PartialEq, Eq, Hash, EnumIter, EnumString)]
 #[repr(u8)]
 pub enum TwistDirectionEnum {
     /// 90-degree face (2c) twist clockwise around `R`
@@ -327,50 +408,72 @@ impl TwistDirectionEnum {
             _ => None,
         }
     }
+
+    pub fn to_signs_within_face(&self) -> Vector3<i32> {
+        use TwistDirectionEnum::*;
+
+        match self {
+            UFR => [1, 1, 1],
+            UFL => [-1, 1, 1],
+            DFR => [1, -1, 1],
+            DFL => [-1, -1, 1],
+            UBR => [1, 1, -1],
+            UBL => [-1, 1, -1],
+            DBR => [1, -1, -1],
+            DBL => [-1, -1, -1],
+
+            UR => [1, 1, 0],
+            UL => [-1, 1, 0],
+            DR => [1, -1, 0],
+            DL => [-1, -1, 0],
+            FR => [1, 0, 1],
+            FL => [-1, 0, 1],
+            BR => [1, 0, -1],
+            BL => [-1, 0, -1],
+            UF => [0, 1, 1],
+            DF => [0, -1, 1],
+            UB => [0, 1, -1],
+            DB => [0, -1, -1],
+
+            R | R2 => [1, 0, 0],
+            L | L2 => [-1, 0, 0],
+            U | U2 => [0, 1, 0],
+            D | D2 => [0, -1, 0],
+            F | F2 => [0, 0, 1],
+            B | B2 => [0, 0, -1],
+        }
+        .into()
+    }
 }
 
-#[test]
-fn test_twist_composition() {
-    use crate::piece_cube::puzzle::PieceCube;
-    let solved = PieceCube::solved();
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    for face in Face::iter() {
-        assert_eq!(
-            solved
-                .twist(Twist {
+    #[test]
+    fn test_twist_composition() {
+        use crate::piece_cube::puzzle::PieceCube;
+        let solved = PieceCube::solved();
+
+        for face in Face::iter() {
+            assert_eq!(
+                solved
+                    .twist(Twist {
+                        face,
+                        direction: TwistDirectionEnum::R,
+                        layer: LayerEnum::This
+                    })
+                    .twist(Twist {
+                        face,
+                        direction: TwistDirectionEnum::U,
+                        layer: LayerEnum::This
+                    }),
+                solved.twist(Twist {
                     face,
-                    direction: TwistDirectionEnum::R,
+                    direction: TwistDirectionEnum::UFR,
                     layer: LayerEnum::This
                 })
-                .twist(Twist {
-                    face,
-                    direction: TwistDirectionEnum::U,
-                    layer: LayerEnum::This
-                }),
-            solved.twist(Twist {
-                face,
-                direction: TwistDirectionEnum::UFR,
-                layer: LayerEnum::This
-            })
-        );
+            );
+        }
     }
-
-    assert_eq!(
-        solved
-            .twist(Twist {
-                face: Face::L,
-                direction: TwistDirectionEnum::R,
-                layer: LayerEnum::This
-            })
-            .twist(Twist {
-                face: Face::L,
-                direction: TwistDirectionEnum::R,
-                layer: LayerEnum::Other
-            }),
-        solved.twist(Twist {
-            face: Face::L,
-            direction: TwistDirectionEnum::R,
-            layer: LayerEnum::Both
-        })
-    );
 }

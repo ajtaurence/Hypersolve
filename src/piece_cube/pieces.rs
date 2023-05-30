@@ -4,7 +4,7 @@ use std::{
 };
 
 use crate::{
-    common::{Axis, Face, Parity, Sign},
+    common::{Axis, Face, Parity, Sign, Vector4},
     groups::Permutation,
 };
 
@@ -12,7 +12,8 @@ use super::*;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Piece {
-    pub faces: [Face; 4],
+    /// The face that the piece on the given axis is currently on
+    pub faces: Vector4<Face>,
 }
 
 impl Display for Piece {
@@ -56,13 +57,13 @@ impl IndexMut<Axis> for Piece {
 }
 
 impl Piece {
-    pub const fn new(faces: [Face; 4]) -> Piece {
+    pub const fn new(faces: Vector4<Face>) -> Piece {
         Piece { faces }
     }
 
     /// Returns the axis permutation of the piece in the "is replaced by format"
     pub fn to_axis_permutation(&self) -> Permutation<4> {
-        Permutation::from_array(self.faces.map(|f| f.axis() as usize)).inverse()
+        Permutation::from_array(self.faces.map(|f| f.axis() as usize).0).inverse()
     }
 
     pub fn current_location(self) -> PieceLocation {
@@ -80,7 +81,7 @@ impl Piece {
         }
     }
     fn rotate(mut self, from: Axis, to: Axis) -> Self {
-        for face in &mut self.faces {
+        for face in &mut self.faces.0 {
             if face.axis() == from {
                 *face = Face::from_axis_sign(to, face.sign())
             } else if face.axis() == to {
@@ -99,7 +100,7 @@ impl Piece {
     }
 
     fn mirror(mut self, axis: Axis) -> Self {
-        for face in &mut self.faces {
+        for face in &mut self.faces.0 {
             if face.axis() == axis {
                 *face = face.opposite();
             }
@@ -191,12 +192,12 @@ impl IndexMut<Axis> for PieceLocation {
 
 impl PieceLocation {
     pub const fn solved_piece(&self) -> Piece {
-        Piece::new([
+        Piece::new(Vector4::from_array([
             Face::from_axis_sign(Axis::X, self.x),
             Face::from_axis_sign(Axis::Y, self.y),
             Face::from_axis_sign(Axis::Z, self.z),
             Face::from_axis_sign(Axis::W, self.w),
-        ])
+        ]))
     }
 
     pub const fn from_signs(x: Sign, y: Sign, z: Sign, w: Sign) -> PieceLocation {
