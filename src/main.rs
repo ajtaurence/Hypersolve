@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand, ValueEnum};
-use hypersolve::{piece_cube::twist::Twist};
+use hypersolve::{piece_cube::{twist::Twist, puzzle::PieceCube}, search::fast_solve};
 use itertools::Itertools;
 
 #[derive(Parser)]
@@ -63,7 +63,17 @@ fn main() {
     let args = Cli::parse();
 
     match args.command {
-        Commands::Solve { moves, mode: _ } => println!("{}", moves.into_iter().join(" ")),
+        Commands::Solve { moves, mode } => {
+            match mode {
+                SolveMode::Fast => {
+                    let solutions = fast_solve(PieceCube::solved().twists(moves), None);
+                    while let Ok(soln) = solutions.recv(){
+                        println!("{}", soln.into_iter().map(|twist| twist.to_mc4d_string()).join(" "))
+                    }
+                },
+                SolveMode::Optimal => todo!()
+            }
+        },
         _ => todo!()
     }
 }

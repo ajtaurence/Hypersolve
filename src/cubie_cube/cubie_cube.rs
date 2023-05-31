@@ -27,14 +27,23 @@ impl CubieCube {
     }
 
     /// Applies the given move to the cubiecube
-    pub fn apply_move(self, i: usize) -> CubieCube {
+    pub fn apply_move(self, m: Move) -> CubieCube {
         CubieCube {
             orientation: self
                 .orientation
-                .permute(PERM_MOVE_TABLE[i])
-                .apply_orientation(A4_MOVE_TABLE[i]),
-            permutation: self.permutation.permute(PERM_MOVE_TABLE[i]),
+                .permute(PERM_MOVE_TABLE[m.0 as usize])
+                .apply_orientation(A4_MOVE_TABLE[m.0 as usize]),
+            permutation: self.permutation.permute(PERM_MOVE_TABLE[m.0 as usize]),
         }
+    }
+
+    /// Applies the moves to the cubiecube
+    pub fn apply_moves(self, moves: impl IntoIterator<Item = Move>) -> CubieCube {
+        let mut result = self;
+        for m in moves {
+            result = result.apply_move(m);
+        }
+        result
     }
 }
 
@@ -47,7 +56,7 @@ mod tests {
     #[test]
     fn test_cubie_cube_twists() {
         for i in 0..HYPERSOLVE_TWISTS.len() {
-            let cubiecube = CubieCube::from(PieceCube::solved()).apply_move(i);
+            let cubiecube = CubieCube::from(PieceCube::solved()).apply_move(Move(i as u8));
             let piececube = PieceCube::solved().twist(HYPERSOLVE_TWISTS[i]);
 
             assert!(cubiecube == CubieCube::from(piececube))
@@ -67,7 +76,7 @@ mod tests {
         let mut one_move_states = Vec::new();
 
         (0..Phase2::N_MOVES).into_iter().for_each(|move_index| {
-            let cube = CubieCube::solved().apply_move(move_index);
+            let cube = CubieCube::solved().apply_move(Move(move_index as u8));
             let phase2_node = Phase2Node::from(cube);
             one_move_states.push(cube);
             set.insert(phase2_node.get_index());
@@ -77,7 +86,7 @@ mod tests {
             .into_iter()
             .cartesian_product(0..Phase2::N_MOVES)
             .for_each(|(cube, move_index)| {
-                let cube = cube.apply_move(move_index);
+                let cube = cube.apply_move(Move(move_index as u8));
                 let phase2_node = Phase2Node::from(cube);
                 set.insert(phase2_node.get_index());
             });

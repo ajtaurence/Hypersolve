@@ -58,6 +58,13 @@ impl PieceCube {
         self
     }
 
+    pub fn twists(self, twists: impl IntoIterator<Item = Twist>) -> Self {
+        for twist in twists {
+            self.twist(twist);
+        }
+        self
+    }
+
     pub fn pieces_except_last(self) -> [Piece; 15] {
         self.pieces
             .into_iter()

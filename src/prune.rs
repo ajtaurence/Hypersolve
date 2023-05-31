@@ -14,7 +14,7 @@ use crate::{
 lazy_static! {
     pub static ref PHASE1_PRUNING_TABLE: ArrayPruningTable<Phase1> = gen_pruning_table(4);
     pub static ref PHASE2_PRUNING_TABLE: HashMapPruningTable<Phase2> = gen_pruning_table(4);
-    pub static ref PHASE3_PRUNING_TABLE: ArrayPruningTable<Phase3> = gen_pruning_table(12);
+    pub static ref PHASE3_PRUNING_TABLE: ArrayPruningTable<Phase3> = gen_pruning_table(5);
 }
 
 pub trait PruningTable {

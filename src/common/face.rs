@@ -1,5 +1,7 @@
 use super::*;
 
+use strum::EnumCount;
+
 #[derive(
     Debug,
     Copy,
@@ -10,6 +12,7 @@ use super::*;
     Ord,
     Hash,
     strum_macros::EnumIter,
+    strum_macros::EnumCount,
     strum_macros::EnumString,
 )]
 #[repr(u8)]
@@ -22,6 +25,39 @@ pub enum Face {
     B,
     O,
     I,
+}
+
+impl Index for Face {
+    const NUM_INDICES: u64 = Face::COUNT as u64;
+
+    fn from_index(index: u64) -> Self {
+        use Face::*;
+        match index {
+            0 => R,
+            1 => L,
+            2 => U,
+            3 => D,
+            4 => F,
+            5 => B,
+            6 => O,
+            7 => I,
+            _ => unreachable!(),
+        }
+    }
+
+    fn to_index(self) -> u64 {
+        use Face::*;
+        match self {
+            R => 0,
+            L => 1,
+            U => 2,
+            D => 3,
+            F => 4,
+            B => 5,
+            O => 6,
+            I => 7,
+        }
+    }
 }
 
 impl std::fmt::Display for Face {
@@ -61,12 +97,12 @@ macro_rules! vector_to_from_face {
                 use Face::*;
                 match value {
                     R => Vector([1, 0, 0, 0]),
-                    F => Vector([0, 1, 0, 0]),
-                    U => Vector([0, 0, 1, 0]),
+                    U => Vector([0, 1, 0, 0]),
+                    F => Vector([0, 0, 1, 0]),
                     O => Vector([0, 0, 0, 1]),
                     L => Vector([-1, 0, 0, 0]),
-                    B => Vector([0, -1, 0, 0]),
-                    D => Vector([0, 0, -1, 0]),
+                    D => Vector([0, -1, 0, 0]),
+                    B => Vector([0, 0, -1, 0]),
                     I => Vector([0, 0, 0, -1]),
                 }
             }

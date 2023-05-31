@@ -1,8 +1,20 @@
+use strum::EnumCount;
+
 use super::*;
 
 /// An enum representing the axes X, Y, Z, and W
 #[derive(
-    Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, strum_macros::EnumIter, Hash,
+    Debug,
+    Default,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    strum_macros::EnumIter,
+    strum_macros::EnumCount,
+    Hash,
 )]
 #[repr(u8)]
 pub enum Axis {
@@ -11,6 +23,31 @@ pub enum Axis {
     Y = 1,
     Z = 2,
     W = 3,
+}
+
+impl Index for Axis {
+    const NUM_INDICES: u64 = Axis::COUNT as u64;
+
+    fn from_index(index: u64) -> Self {
+        use Axis::*;
+        match index {
+            0 => X,
+            1 => Y,
+            2 => Z,
+            3 => W,
+            _ => unreachable!(),
+        }
+    }
+
+    fn to_index(self) -> u64 {
+        use Axis::*;
+        match self {
+            X => 0,
+            Y => 1,
+            Z => 2,
+            W => 3,
+        }
+    }
 }
 
 impl std::fmt::Display for Axis {

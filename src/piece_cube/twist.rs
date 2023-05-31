@@ -6,7 +6,10 @@ use num_enum::{FromPrimitive, TryFromPrimitive};
 use strum::{EnumIter, IntoEnumIterator};
 use strum_macros::EnumString;
 
-use crate::common::{Axis, Face, Sign, Vector3, Vector4};
+use crate::{
+    common::{Axis, Face, Sign, Vector3, Vector4},
+    cubie_cube::{Move, HYPERSOLVE_TWISTS},
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TwistParseError {
@@ -55,6 +58,12 @@ pub struct Twist {
     pub face: Face,
     pub direction: TwistDirectionEnum,
     pub layer: LayerEnum,
+}
+
+impl From<Move> for Twist {
+    fn from(value: Move) -> Self {
+        HYPERSOLVE_TWISTS[value.0 as usize]
+    }
 }
 
 impl std::fmt::Display for Twist {
@@ -160,7 +169,7 @@ impl Twist {
             self.direction = quarter_turn.into();
             return format!("{0} {0}", Self::to_mc4d_string(self));
         }
-        let sticker_id = MC4D_TWIST_IDS[&(self.face, self.direction)];
+        let sticker_id = *MC4D_TWIST_IDS.get(&(self.face, self.direction)).unwrap();
         let direction_id = 1;
         let layer_mask = self.layer as u8;
         format!("{sticker_id},{direction_id},{layer_mask}")
@@ -178,27 +187,27 @@ impl Twist {
             Face::O,
         ];
 
-        MC4D_FACE_ORDER.into_iter().flat_map(|face| {
+        let piece_locations =
+            itertools::iproduct!([-1, 0, 1], [-1, 0, 1], [-1, 0, 1]).map(|(x, y, z)| [x, y, z]);
+        let corners = piece_locations
+            .clone()
+            .filter(|v| Vector3::from(*v).magnitude_squared() == 3);
+        let edges = piece_locations
+            .clone()
+            .filter(|v| Vector3::from(*v).magnitude_squared() == 2);
+        let centers = piece_locations.filter(|v| Vector3::from(*v).magnitude_squared() == 1);
+        let core = std::iter::once([0, 0, 0]);
+        let mc4d_order_piece_locations = corners.chain(edges).chain(centers).chain(core);
+
+        MC4D_FACE_ORDER.into_iter().flat_map(move |face| {
             let mut basis = face.basis_faces();
             basis.sort_by_key(|f| f.axis()); // order: X, Y, Z, W
             basis.reverse(); // order: W, Z, Y, X
 
-            let piece_locations =
-                itertools::iproduct!([-1, 0, 1], [-1, 0, 1], [-1, 0, 1]).map(|(x, y, z)| [x, y, z]);
-            let corners = piece_locations
-                .clone()
-                .filter(|v| Vector3::<i32>::from_array(*v).magnitude_squared::<i32>() == 3);
-            let edges = piece_locations
-                .clone()
-                .filter(|v| Vector3::<i32>::from(*v).magnitude_squared::<i32>() == 2);
-            let centers = piece_locations
-                .filter(|v| Vector3::<i32>::from(*v).magnitude_squared::<i32>() == 1);
-            let core = std::iter::once([0, 0, 0]);
-            let mc4d_order_piece_locations = corners.chain(edges).chain(centers).chain(core);
-
             mc4d_order_piece_locations
+                .clone()
                 .map(move |mc4d_coords_of_sticker_within_face: [i32; 3]| {
-                    let mut offset = [0; 4];
+                    let mut offset = Vector4::from_elem(0);
                     for i in 0..3 {
                         offset[basis[i].axis() as usize] += mc4d_coords_of_sticker_within_face[i];
                     }
@@ -206,12 +215,12 @@ impl Twist {
                     TwistDirectionEnum::from_signs_within_face(Self::signs_within_face(
                         face,
                         match face {
-                            Face::O => offset.into(), // not sure why this is necessary, but it is
-                            _ => -Vector4::from(offset),
+                            Face::O => offset, // not sure why this is necessary, but it is
+                            _ => -offset,
                         },
                     ))
                 })
-                .map(move |twist_dir| Some((face.into(), twist_dir?)))
+                .map(move |twist_dir| Some((face, twist_dir?)))
         })
     }
 
@@ -407,42 +416,6 @@ impl TwistDirectionEnum {
 
             _ => None,
         }
-    }
-
-    pub fn to_signs_within_face(&self) -> Vector3<i32> {
-        use TwistDirectionEnum::*;
-
-        match self {
-            UFR => [1, 1, 1],
-            UFL => [-1, 1, 1],
-            DFR => [1, -1, 1],
-            DFL => [-1, -1, 1],
-            UBR => [1, 1, -1],
-            UBL => [-1, 1, -1],
-            DBR => [1, -1, -1],
-            DBL => [-1, -1, -1],
-
-            UR => [1, 1, 0],
-            UL => [-1, 1, 0],
-            DR => [1, -1, 0],
-            DL => [-1, -1, 0],
-            FR => [1, 0, 1],
-            FL => [-1, 0, 1],
-            BR => [1, 0, -1],
-            BL => [-1, 0, -1],
-            UF => [0, 1, 1],
-            DF => [0, -1, 1],
-            UB => [0, 1, -1],
-            DB => [0, -1, -1],
-
-            R | R2 => [1, 0, 0],
-            L | L2 => [-1, 0, 0],
-            U | U2 => [0, 1, 0],
-            D | D2 => [0, -1, 0],
-            F | F2 => [0, 0, 1],
-            B | B2 => [0, 0, -1],
-        }
-        .into()
     }
 }
 

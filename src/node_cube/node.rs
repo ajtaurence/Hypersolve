@@ -1,11 +1,12 @@
+use super::*;
+
 use crate::{
     common::Axis,
-    cubie_cube::{
-        CubieCube, Move, MoveIterator, Orientation, Permutation, A4_MOVE_TABLE, PERM_MOVE_TABLE,
-    },
+    cubie_cube::{CubieCube, Move, Orientation, Permutation, A4_MOVE_TABLE, PERM_MOVE_TABLE},
     groups::{Identity, K4},
     math,
     phases::{Phase, Phase1, Phase2, Phase3},
+    prune::{PruningTable, PHASE1_PRUNING_TABLE, PHASE2_PRUNING_TABLE, PHASE3_PRUNING_TABLE},
 };
 use rayon::prelude::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 
@@ -68,7 +69,7 @@ fn gen_c3_move_table() -> Box<[[u32; Phase2::N_MOVES]; N_C3_COORD_STATES as usiz
         };
 
         for j in 0..(Phase2::N_MOVES) {
-            entry[j] = cube.apply_move(j).orientation.c3_coord();
+            entry[j] = cube.apply_move(Move(j as u8)).orientation.c3_coord();
         }
     });
 
@@ -86,7 +87,7 @@ fn gen_io_move_table() -> Box<[[u16; Phase2::N_MOVES]; N_IO_COORD_STATES as usiz
         };
 
         for j in 0..(Phase2::N_MOVES as usize) {
-            entry[j] = cube.apply_move(j).permutation.io_coord();
+            entry[j] = cube.apply_move(Move(j as u8)).permutation.io_coord();
         }
     });
 
@@ -104,7 +105,7 @@ fn gen_i_move_table() -> Box<[[u16; Phase3::N_MOVES]; N_I_COORD_STATES as usize]
         };
 
         for j in 0..(Phase3::N_MOVES) {
-            entry[j] = cube.apply_move(j).permutation.i_coord();
+            entry[j] = cube.apply_move(Move(j as u8)).permutation.i_coord();
         }
     });
 
@@ -122,36 +123,11 @@ fn gen_o_move_table() -> Box<[[u16; Phase3::N_MOVES]; N_O_COORD_STATES as usize]
         };
 
         for j in 0..(Phase3::N_MOVES) {
-            entry[j] = cube.apply_move(j).permutation.o_coord();
+            entry[j] = cube.apply_move(Move(j as u8)).permutation.o_coord();
         }
     });
 
     table.try_into().unwrap()
-}
-
-pub struct NodeIterator<N: Node> {
-    node: N,
-    move_iter: MoveIterator,
-}
-
-impl<N: Node> NodeIterator<N> {
-    pub const fn new(node: N) -> NodeIterator<N> {
-        NodeIterator {
-            node,
-            move_iter: N::Phase::MOVE_ITERATOR,
-        }
-    }
-}
-
-impl<N: Node> Iterator for NodeIterator<N> {
-    type Item = N;
-    fn next(&mut self) -> Option<Self::Item> {
-        self.move_iter.next().map(|m| self.node.apply_move(m))
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.move_iter.size_hint()
-    }
 }
 
 pub trait Node: Identity + PartialEq + Copy + From<CubieCube> {
@@ -167,6 +143,9 @@ pub trait Node: Identity + PartialEq + Copy + From<CubieCube> {
 
     /// Returns a node from an index
     fn last_move(&self) -> Option<Move>;
+
+    /// Gets the lower bound on the number of moves requied to reach the goal node from this node
+    fn get_depth_bound(&self) -> u8;
 
     /// Applies the given move to the node
     fn apply_move(self, move_index: Move) -> Self;
@@ -252,6 +231,10 @@ impl Node for Phase1Node {
             last_move: Some(move_index),
         }
     }
+
+    fn get_depth_bound(&self) -> u8 {
+        PHASE1_PRUNING_TABLE.get_depth(*self)
+    }
 }
 
 impl From<CubieCube> for Phase1Node {
@@ -312,6 +295,10 @@ impl Node for Phase2Node {
             io_coord,
             last_move: Some(move_index),
         }
+    }
+
+    fn get_depth_bound(&self) -> u8 {
+        PHASE2_PRUNING_TABLE.get_depth(*self)
     }
 }
 
@@ -381,6 +368,10 @@ impl Node for Phase3Node {
             o_coord,
             last_move: Some(move_index),
         }
+    }
+
+    fn get_depth_bound(&self) -> u8 {
+        PHASE3_PRUNING_TABLE.get_depth(*self)
     }
 }
 

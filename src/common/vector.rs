@@ -1,3 +1,4 @@
+use super::*;
 use crate::groups::Permutation;
 
 /// A fixed length vector of an arbitrary type.
@@ -19,6 +20,30 @@ where
             }
         }
         f.write_str(")")
+    }
+}
+
+impl<T, const N: usize> Index for Vector<T, N>
+where
+    T: Index + Clone,
+{
+    const NUM_INDICES: u64 = T::NUM_INDICES.pow(N as u32);
+
+    fn from_index(mut index: u64) -> Self {
+        let mut result = Vector::from_elem(T::from_index(0));
+
+        for i in 0..N {
+            result[i] = T::from_index(index % T::NUM_INDICES);
+            index /= T::NUM_INDICES;
+        }
+        result
+    }
+
+    fn to_index(self) -> u64 {
+        self.iter()
+            .enumerate()
+            .map(|(i, value)| value.clone().to_index() * T::NUM_INDICES.pow(i as u32))
+            .sum()
     }
 }
 
