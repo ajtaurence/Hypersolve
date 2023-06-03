@@ -6,7 +6,7 @@ use crate::{
     groups::{Identity, K4},
     math,
     phases::{Phase, Phase1, Phase2, Phase3},
-    prune::{PruningTable, PHASE1_PRUNING_TABLE, PHASE2_PRUNING_TABLE, PHASE3_PRUNING_TABLE},
+    prune::{gen_pruning_table, ArchivedPruningTable, ArrayPruningTable, HashMapPruningTable},
 };
 use rayon::prelude::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 
@@ -20,8 +20,6 @@ const_data!(pub IO_MOVE_TABLE: [[u16; Phase2::N_MOVES ]; N_IO_COORD_STATES as us
 const_data!(pub I_MOVE_TABLE: [[u16;  Phase3::N_MOVES]; N_I_COORD_STATES as usize] = gen_i_move_table());
 const_data!(pub O_MOVE_TABLE: [[u16;  Phase3::N_MOVES]; N_O_COORD_STATES as usize] = gen_o_move_table());
 const_data!(pub MOVE_AXIS: [Axis;  Phase1::N_MOVES] = gen_move_axis_table());
-
-runtime_data!("C3.MOVE", pub static C3_MOVE_TABLE: Box<[[u32; Phase2::N_MOVES as usize]; N_C3_COORD_STATES as usize]> = gen_c3_move_table());
 
 #[cfg(feature = "gen-const-data")]
 #[test]
@@ -136,10 +134,10 @@ pub trait Node: Identity + PartialEq + Copy + From<CubieCube> {
     type Phase: Phase;
 
     /// Returns the index of the node
-    fn get_index(&self) -> usize;
+    fn get_index(&self) -> u64;
 
     /// Returns a node from an index
-    fn from_index(index: usize, last_move: Option<Move>) -> Self;
+    fn from_index(index: u64, last_move: Option<Move>) -> Self;
 
     /// Returns a node from an index
     fn last_move(&self) -> Option<Move>;
@@ -208,11 +206,11 @@ impl Node for Phase1Node {
     const N_STATES: usize = N_K4_COORD_STATES as usize;
     type Phase = Phase1;
 
-    fn get_index(&self) -> usize {
-        self.orientation.k4_coord() as usize
+    fn get_index(&self) -> u64 {
+        self.orientation.k4_coord() as u64
     }
 
-    fn from_index(index: usize, last_move: Option<Move>) -> Self {
+    fn from_index(index: u64, last_move: Option<Move>) -> Self {
         Phase1Node {
             orientation: Orientation::<K4>::from_k4_coord(index as u32),
             last_move,
@@ -233,6 +231,8 @@ impl Node for Phase1Node {
     }
 
     fn get_depth_bound(&self) -> u8 {
+        load_or_generate_data!(static PHASE1_PRUNING_TABLE: HashMapPruningTable<Phase1> = gen_pruning_table::<HashMapPruningTable<_> ,Phase1>(5), "phase1.prun");
+
         PHASE1_PRUNING_TABLE.get_depth(*self)
     }
 }
@@ -271,14 +271,14 @@ impl Node for Phase2Node {
     const N_STATES: usize = N_C3_COORD_STATES as usize * N_IO_COORD_STATES as usize;
     type Phase = Phase2;
 
-    fn get_index(&self) -> usize {
-        (self.io_coord as usize) * (N_C3_COORD_STATES as usize) + (self.c3_coord as usize)
+    fn get_index(&self) -> u64 {
+        (self.io_coord as u64) * (N_C3_COORD_STATES as u64) + (self.c3_coord as u64)
     }
 
-    fn from_index(index: usize, last_move: Option<Move>) -> Self {
+    fn from_index(index: u64, last_move: Option<Move>) -> Self {
         Phase2Node {
-            c3_coord: (index % N_C3_COORD_STATES as usize) as u32,
-            io_coord: (index / N_C3_COORD_STATES as usize) as u16,
+            c3_coord: (index % N_C3_COORD_STATES as u64) as u32,
+            io_coord: (index / N_C3_COORD_STATES as u64) as u16,
             last_move,
         }
     }
@@ -288,6 +288,8 @@ impl Node for Phase2Node {
     }
 
     fn apply_move(self, move_index: Move) -> Self {
+        load_or_generate_data!(static C3_MOVE_TABLE: Box<[[u32; Phase2::N_MOVES as usize]; N_C3_COORD_STATES as usize]> = gen_c3_move_table(), "c3.move");
+
         let c3_coord = C3_MOVE_TABLE[self.c3_coord as usize][move_index.as_usize()];
         let io_coord = IO_MOVE_TABLE[self.io_coord as usize][move_index.as_usize()];
         Self {
@@ -298,6 +300,8 @@ impl Node for Phase2Node {
     }
 
     fn get_depth_bound(&self) -> u8 {
+        load_or_generate_data!(static PHASE2_PRUNING_TABLE: HashMapPruningTable<Phase2> = gen_pruning_table::<HashMapPruningTable<_> ,Phase2>(6), "phase2.prun");
+
         PHASE2_PRUNING_TABLE.get_depth(*self)
     }
 }
@@ -337,14 +341,14 @@ impl Node for Phase3Node {
     const N_STATES: usize = N_I_COORD_STATES as usize * N_O_COORD_STATES as usize / 2;
     type Phase = Phase3;
 
-    fn get_index(&self) -> usize {
-        self.o_coord as usize * (N_I_COORD_STATES / 2) as usize
-            + (self.i_coord % (N_I_COORD_STATES / 2)) as usize
+    fn get_index(&self) -> u64 {
+        self.o_coord as u64 * (N_I_COORD_STATES / 2) as u64
+            + (self.i_coord % (N_I_COORD_STATES / 2)) as u64
     }
 
-    fn from_index(index: usize, last_move: Option<Move>) -> Self {
-        let o_coord = (index / (N_I_COORD_STATES / 2) as usize) as u16;
-        let mut i_coord = (index % (N_I_COORD_STATES / 2) as usize) as u16;
+    fn from_index(index: u64, last_move: Option<Move>) -> Self {
+        let o_coord = (index / (N_I_COORD_STATES / 2) as u64) as u16;
+        let mut i_coord = (index % (N_I_COORD_STATES / 2) as u64) as u16;
         if o_coord >= (N_O_COORD_STATES / 2) as u16 {
             i_coord += N_I_COORD_STATES / 2;
         };
@@ -371,6 +375,8 @@ impl Node for Phase3Node {
     }
 
     fn get_depth_bound(&self) -> u8 {
+        load_or_generate_data!(static PHASE3_PRUNING_TABLE: ArrayPruningTable<Phase3> = gen_pruning_table::<ArrayPruningTable<_> ,Phase3>(21), "phase3.prun");
+
         PHASE3_PRUNING_TABLE.get_depth(*self)
     }
 }

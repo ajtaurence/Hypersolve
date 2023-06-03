@@ -2,11 +2,16 @@ use std::ops::{Index, IndexMut};
 
 use itertools::Itertools;
 
+use crate::{
+    common::{Sign, Vector, Vector4},
+    groups::Permutation,
+};
+
 use super::*;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct PieceCube {
-    pub pieces: [Piece; 16],
+    pub pieces: Vector<Piece, 16>,
 }
 
 impl Default for PieceCube {
@@ -35,7 +40,7 @@ impl IndexMut<PieceLocation> for PieceCube {
 }
 
 impl PieceCube {
-    const fn new(pieces: [Piece; 16]) -> PieceCube {
+    const fn new(pieces: Vector<Piece, 16>) -> PieceCube {
         PieceCube { pieces }
     }
 
@@ -58,9 +63,9 @@ impl PieceCube {
         self
     }
 
-    pub fn twists(self, twists: impl IntoIterator<Item = Twist>) -> Self {
+    pub fn twists(mut self, twists: impl IntoIterator<Item = Twist>) -> Self {
         for twist in twists {
-            self.twist(twist);
+            self = self.twist(twist);
         }
         self
     }
@@ -74,9 +79,51 @@ impl PieceCube {
             .unwrap()
     }
 
-    /// Repositions the inner representation of the cube so the state is the same but the OBLD piece is solved
-    pub fn reposition(self) -> Self {
-        //todo!("impliment reposition");
+    /// Repositions the inner representation of the cube so the state is the same but the LDBO piece is solved
+    pub fn reposition(mut self) -> Self {
+        // get the reference sticker
+        let (reference_index, &reference_piece) = self
+            .pieces
+            .iter()
+            .find_position(|piece| piece.current_location().index() == 15)
+            .unwrap();
+
+        // get the axis permutation of the reference sticker
+        let axis_perm = reference_piece.to_axis_permutation();
+
+        // permute the axes of each sticker according to the axis permutation of the reference sticker
+        self.pieces = self.pieces.map(|piece| Piece {
+            faces: piece.faces.permute(axis_perm),
+        });
+
+        let reference_signs: Vector4<Sign> =
+            PieceLocation::from_index(15).solved_piece().faces.cast();
+
+        let solved_reference_signs: Vector4<Sign> = PieceLocation::from_index(reference_index)
+            .solved_piece()
+            .faces
+            .cast();
+
+        let solved = Self::solved();
+
+        println!(
+            "{:?}",
+            solved.pieces.map(|piece| Piece { faces: piece.faces })
+        );
+
+        // honestly no idea what this is doing ¯\_(ツ)_/¯
+        let piece_perm = Permutation::from_array(
+            solved
+                .pieces
+                .map(|piece| Piece {
+                    faces: piece.faces * reference_signs * solved_reference_signs,
+                })
+                .map(|piece| piece.current_location().index())
+                .0,
+        );
+
+        self.pieces = self.pieces.permute(piece_perm);
+
         self
     }
 }

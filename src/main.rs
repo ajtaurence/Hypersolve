@@ -60,15 +60,25 @@ enum SimplifyMode {
 }
 
 fn main() {
+    
+    // let args = Cli::parse_from(["hypersolve", "solve", "58,1,1"]);
+
+    // let twist = Twist::from_mc4d_twist_string("58,1,1").unwrap();
+    // let twist = Twist::new(twist.face, twist.direction, hypersolve::piece_cube::twist::LayerEnum::Both);
+    // let cube = PieceCube::solved().twist(twist);
+    // println!("{:?}", cube.pieces.map(|mut piece| {piece.faces.sort(); piece}));
+
     let args = Cli::parse();
+    
+    
 
     match args.command {
         Commands::Solve { moves, mode } => {
             match mode {
                 SolveMode::Fast => {
                     let solutions = fast_solve(PieceCube::solved().twists(moves), None);
-                    while let Ok(soln) = solutions.recv(){
-                        println!("{}", soln.into_iter().map(|twist| twist.to_mc4d_string()).join(" "))
+                    while let Ok((soln, length)) = solutions.recv(){
+                        println!("Found solution of length {}: {}", length, soln.into_iter().map(|twist| twist.to_mc4d_string()).join(" "))
                     }
                 },
                 SolveMode::Optimal => todo!()

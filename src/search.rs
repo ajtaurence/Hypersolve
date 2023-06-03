@@ -45,14 +45,18 @@ fn phase_solutions_at_depth<N: Node + 'static>(
 
 /// Iterates over all solutions for the node in order of increasing length
 fn phase_solutions<N: Node + 'static>(node: N) -> impl Iterator<Item = Vec<Move>> {
-    (0..).flat_map(move |i| phase_solutions_at_depth(node, i, Vec::new()))
+    // find the minimum possible depth from the goal
+    let min_depth = node.get_depth_bound();
+
+    // start at the min depth and search longer solutions if needed
+    (min_depth as u32..).flat_map(move |i| phase_solutions_at_depth(node, i, Vec::new()))
 }
 
-/// Solves the cube on this thread, sending solutions back via `solutions`
+/// Solves the cube on this thread, sending solutions and solution lengths back via `solutions`
 fn fast_solve_single_thread(
     cube: CubieCube,
     shortest_sol_length: Arc<AtomicU32>,
-    solutions: Sender<(Vec<Move>, Option<Twist>)>,
+    solutions: Sender<(Vec<Twist>, u32)>,
     cube_rotation: Option<Twist>,
 ) {
     let phase1_cube = cube;
@@ -78,44 +82,51 @@ fn fast_solve_single_thread(
 
             let phase3_cube = phase2_cube.apply_moves(phase2_sol.clone());
 
-            'phase3: for phase3_sol in phase_solutions::<Phase3Node>(phase3_cube.into()) {
-                // TODO: handle move cancelation
-                let phase3_sol_length = phase3_sol.len() as u32 + phase2_sol_length;
+            let phase3_sol = phase_solutions::<Phase3Node>(phase3_cube.into())
+                .next()
+                .unwrap();
 
-                loop {
-                    let current_shortest_length = shortest_sol_length.load(Ordering::SeqCst);
+            // TODO: handle move cancelation
+            let phase3_sol_length = phase3_sol.len() as u32 + phase2_sol_length;
 
-                    if phase3_sol_length >= current_shortest_length {
-                        // The new length is not shorter, no need to update
-                        break 'phase3;
-                    }
+            loop {
+                let current_shortest_length = shortest_sol_length.load(Ordering::SeqCst);
 
-                    // Attempt to update the length if it is still the same as the current length
-                    match shortest_sol_length.compare_exchange_weak(
-                        current_shortest_length,
-                        phase3_sol_length,
-                        Ordering::SeqCst,
-                        Ordering::SeqCst,
-                    ) {
-                        // Successfully updated the length
-                        Ok(_) => {
-                            // create the full solution
-                            let full_sol = phase1_sol
-                                .clone()
-                                .into_iter()
-                                .chain(phase2_sol.clone())
-                                .chain(phase3_sol)
-                                .collect();
-                            // send the solution
-                            let _ = solutions.send((full_sol, cube_rotation));
-                            break;
+                if phase3_sol_length >= current_shortest_length {
+                    // The new length is not shorter, no need to update
+                    break;
+                }
+
+                // Attempt to update the length if it is still the same as the current length
+                match shortest_sol_length.compare_exchange_weak(
+                    current_shortest_length,
+                    phase3_sol_length,
+                    Ordering::SeqCst,
+                    Ordering::SeqCst,
+                ) {
+                    // Successfully updated the length
+                    Ok(_) => {
+                        // create the full solution
+                        let mut full_sol: Vec<_> = phase1_sol
+                            .clone()
+                            .into_iter()
+                            .chain(phase2_sol.clone())
+                            .chain(phase3_sol)
+                            .map(|m| Twist::from(m))
+                            .collect();
+                        if let Some(rotation) = cube_rotation {
+                            full_sol.insert(0, rotation)
                         }
-                        // The length was updated by another thread, try again
-                        Err(new_length) => {
-                            if phase3_sol_length >= new_length {
-                                // The new length is not shorter, no need to continue
-                                break;
-                            }
+
+                        // send the solution
+                        let _ = solutions.send((full_sol, phase3_sol_length));
+                        break;
+                    }
+                    // The length was updated by another thread, try again
+                    Err(new_length) => {
+                        if phase3_sol_length >= new_length {
+                            // The new length is not shorter, no need to continue
+                            break;
                         }
                     }
                 }
@@ -126,10 +137,8 @@ fn fast_solve_single_thread(
     todo!()
 }
 
-/// Solves the given cube on multiple threads, sending solutions back as they are found
-pub fn fast_solve(cube: PieceCube, max_sol_length: Option<u32>) -> Receiver<Vec<Twist>> {
-    let cubie = CubieCube::from(cube);
-
+/// Solves the given cube on multiple threads, sending solutions and solution lengths back as they are found
+pub fn fast_solve(cube: PieceCube, max_sol_length: Option<u32>) -> Receiver<(Vec<Twist>, u32)> {
     let length = Arc::new(AtomicU32::new(max_sol_length.unwrap_or(u32::MAX)));
 
     let (raw_sol_send, raw_sol_receive) = channel();
@@ -137,20 +146,17 @@ pub fn fast_solve(cube: PieceCube, max_sol_length: Option<u32>) -> Receiver<Vec<
     // spawn threads to search for solutions in parallel from different orientations
     thread::spawn(move || {
         // TODO: spawn a thread for each orientation
-        fast_solve_single_thread(cubie, length, raw_sol_send, None);
+        fast_solve_single_thread(cube.into(), length.clone(), raw_sol_send.clone(), None);
     });
 
     // create a channel for converting solutions
     let (complete_sol_send, complete_sol_receive) = channel();
 
-    // spawn a thread to simplify and convert incoming solutions
+    // spawn a thread to simplify incoming solutions
     thread::spawn(move || {
-        while let Ok((solution, _cube_rotation)) = raw_sol_receive.recv() {
-            // convert the solution to twist objects
-            let converted_solution = solution.into_iter().map(|m| Twist::from(m)).collect();
-
+        while let Ok((solution, length)) = raw_sol_receive.recv() {
             // TODO: simplify the solution and rotate it according to cube rotation before sending it back
-            complete_sol_send.send(converted_solution).unwrap();
+            complete_sol_send.send((solution, length)).unwrap();
         }
     });
 

@@ -1,21 +1,12 @@
-use lazy_static::lazy_static;
-use serde::{Deserialize, Serialize};
+use rkyv::Archive;
+use rkyv::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     marker::PhantomData,
     ops::{Add, Deref, DerefMut},
 };
 
-use crate::{
-    node_cube::node::Node,
-    phases::{Phase, Phase1, Phase2, Phase3},
-};
-
-lazy_static! {
-    pub static ref PHASE1_PRUNING_TABLE: ArrayPruningTable<Phase1> = gen_pruning_table(4);
-    pub static ref PHASE2_PRUNING_TABLE: HashMapPruningTable<Phase2> = gen_pruning_table(4);
-    pub static ref PHASE3_PRUNING_TABLE: ArrayPruningTable<Phase3> = gen_pruning_table(5);
-}
+use crate::{node_cube::node::Node, phases::Phase};
 
 pub trait PruningTable {
     type Phase: Phase;
@@ -48,6 +39,28 @@ pub trait PruningTable {
 
     /// Anything that needs to be done to the pruning table after it is done being generated
     fn finalize(&mut self);
+}
+
+pub trait ArchivedPruningTable {
+    type Phase: Phase;
+
+    /// Gets a lower bound on the depth of the node
+    fn get_depth(&self, node: <<Self as ArchivedPruningTable>::Phase as Phase>::Node) -> u8;
+
+    /// Gets the depth and returns whether the depth is exact or bounded
+    fn get_exact_or_bounded_depth(
+        &self,
+        node: <<Self as ArchivedPruningTable>::Phase as Phase>::Node,
+    ) -> ExactOrBound<u8> {
+        let depth = self.get_depth(node);
+        match depth < self.get_max_depth() {
+            true => ExactOrBound::Exact(depth),
+            false => ExactOrBound::LowerBound(depth),
+        }
+    }
+
+    /// Gets the max depth if all states were found before the maximum depth
+    fn get_max_depth(&self) -> u8;
 }
 
 /// Represents an exact value or a lower bound value
@@ -95,9 +108,9 @@ impl<T: Add<Output = T>> Add for ExactOrBound<T> {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Archive, Serialize, Deserialize)]
 pub struct HashMapPruningTable<T: Phase> {
-    pub data: HashMap<usize, u8>,
+    pub data: HashMap<u64, u8>,
     pub max_depth: u8,
     phantom: PhantomData<T>,
 }
@@ -107,14 +120,14 @@ impl<T: Phase> PruningTable for HashMapPruningTable<T> {
     // TODO: Maybe add initialization capacity?
     fn new(max_depth: u8) -> Self {
         HashMapPruningTable {
-            data: HashMap::<usize, u8>::new(),
+            data: HashMap::<u64, u8>::new(),
             max_depth,
             phantom: PhantomData,
         }
     }
 
     fn get_depth(&self, node: T::Node) -> u8 {
-        match self.data.get(&node.get_index()) {
+        match self.data.get(&(node.get_index() as u64)) {
             Some(&depth) => depth,
             None => self.max_depth + 1,
         }
@@ -137,6 +150,21 @@ impl<T: Phase> PruningTable for HashMapPruningTable<T> {
     }
 }
 
+impl<T: Phase> ArchivedPruningTable for ArchivedHashMapPruningTable<T> {
+    type Phase = T;
+    fn get_depth(&self, node: <<Self as ArchivedPruningTable>::Phase as Phase>::Node) -> u8 {
+        match self.data.get(&(node.get_index() as u64)) {
+            Some(&depth) => depth,
+            None => self.max_depth + 1,
+        }
+    }
+
+    fn get_max_depth(&self) -> u8 {
+        self.max_depth
+    }
+}
+
+#[derive(Debug, Archive, Serialize, Deserialize)]
 pub struct ArrayPruningTable<T: Phase> {
     data: Box<[u8]>,
     max_depth: u8,
@@ -171,11 +199,11 @@ impl<T: Phase> PruningTable for ArrayPruningTable<T> {
     }
 
     fn set_depth(&mut self, node: T::Node, depth: u8) {
-        self[node.get_index()] = depth;
+        self[node.get_index() as usize] = depth;
     }
 
     fn get_depth(&self, node: T::Node) -> u8 {
-        self[node.get_index()]
+        self[node.get_index() as usize]
     }
 
     fn get_max_depth(&self) -> u8 {
@@ -189,12 +217,22 @@ impl<T: Phase> PruningTable for ArrayPruningTable<T> {
     fn finalize(&mut self) {}
 }
 
+impl<T: Phase> ArchivedPruningTable for ArchivedArrayPruningTable<T> {
+    type Phase = T;
+    fn get_depth(&self, node: <<Self as ArchivedPruningTable>::Phase as Phase>::Node) -> u8 {
+        self.data[node.get_index() as usize]
+    }
+
+    fn get_max_depth(&self) -> u8 {
+        self.max_depth
+    }
+}
+
 struct DepthQueue<T> {
     pub depth: u8,
     pop_from_first: bool,
     queue1: Vec<T>,
     queue2: Vec<T>,
-    progress: indicatif::ProgressBar,
 }
 
 impl<T> DepthQueue<T> {
@@ -204,19 +242,11 @@ impl<T> DepthQueue<T> {
             pop_from_first: true,
             queue1: Vec::new(),
             queue2: Vec::new(),
-            progress: indicatif::ProgressBar::hidden(),
         }
     }
 
     pub fn is_empty(&self) -> bool {
         self.queue1.is_empty() && self.queue2.is_empty()
-    }
-
-    pub fn len(&self) -> usize {
-        match self.pop_from_first {
-            false => self.queue1.len(),
-            true => self.queue2.len(),
-        }
     }
 
     pub fn push(&mut self, value: T) {
@@ -234,24 +264,13 @@ impl<T> DepthQueue<T> {
         };
 
         if !queue.is_empty() {
-            self.progress.inc(1);
             return queue.pop();
         }
 
         if self.is_empty() {
-            self.progress.finish();
             return None;
         }
 
-        self.progress.finish();
-        self.progress = indicatif::ProgressBar::new(self.len() as u64)
-            .with_message(format!("Searching depth {:?}", self.depth));
-        self.progress.set_style(
-            indicatif::ProgressStyle::with_template(
-                "{msg}: {percent}% of {human_len} nodes {bar:40} {eta}",
-            )
-            .unwrap(),
-        );
         self.pop_from_first = !self.pop_from_first;
         self.depth += 1;
         return self.pop();
@@ -292,110 +311,118 @@ pub fn gen_pruning_table<P: PruningTable<Phase = T>, T: Phase>(max_depth: u8) ->
     return pruning_table;
 }
 
-pub fn explore<T: Phase>() -> bit_vec::BitVec {
-    use bit_vec::BitVec;
-    let mut bit_array = BitVec::from_elem(T::N_STATES, false);
+// pub fn explore<T: Phase>() -> bit_vec::BitVec {
+//     use bit_vec::BitVec;
+//     let mut bit_array = BitVec::from_elem(T::N_STATES, false);
 
-    let mut queue = DepthQueue::<T::Node>::new();
+//     let mut queue = DepthQueue::<T::Node>::new();
 
-    let goal = T::Node::goal();
-    queue.push(goal);
+//     let goal = T::Node::goal();
+//     queue.push(goal);
 
-    let mut num_count: u64 = 0;
-    // forward search mode
-    loop {
-        if let Some(node) = queue.pop() {
-            for new_node in node.connected().into_iter() {
-                if !bit_array[new_node.get_index()] {
-                    bit_array.set(new_node.get_index(), true);
+//     let mut num_count: u64 = 0;
+//     // forward search mode
+//     loop {
+//         if let Some(node) = queue.pop() {
+//             for new_node in node.connected().into_iter() {
+//                 if !bit_array[new_node.get_index()] {
+//                     bit_array.set(new_node.get_index(), true);
 
-                    if queue.depth < 8 {
-                        queue.push(new_node);
-                    } else {
-                        num_count += 1;
-                    }
-                }
-            }
-        } else {
-            break;
-        }
+//                     if queue.depth < 8 {
+//                         queue.push(new_node);
+//                     } else {
+//                         num_count += 1;
+//                     }
+//                 }
+//             }
+//         } else {
+//             break;
+//         }
+//     }
+//     println!("Depth: {}: {} nodes", queue.depth, num_count);
+
+//     // reverse search mode
+//     let mut depth = queue.depth;
+//     loop {
+//         depth += 1;
+//         let mpb = indicatif::MultiProgress::new();
+
+//         let progress = indicatif::ProgressBar::new(T::N_STATES as u64)
+//             .with_message(format!("Searching depth {:?}", depth));
+//         progress.set_style(
+//             indicatif::ProgressStyle::with_template(
+//                 "{msg}: {percent}% of {human_len} nodes {bar:40} {eta}",
+//             )
+//             .unwrap(),
+//         );
+//         let progress = mpb.add(progress);
+
+//         let count = indicatif::ProgressBar::new(T::N_STATES as u64);
+//         count.set_style(
+//             indicatif::ProgressStyle::with_template(
+//                 "{percent}% of {human_pos}/{human_len} nodes {bar:40} {eta}",
+//             )
+//             .unwrap(),
+//         );
+
+//         let count = mpb.add(count);
+
+//         let mut flip_count: u64 = 0;
+
+//         let last_bit_array = bit_array.clone();
+
+//         for (i, bit) in last_bit_array.iter().enumerate() {
+//             progress.inc(1);
+//             if bit {
+//                 continue;
+//             }
+
+//             let node = T::Node::from_index(i, None);
+
+//             for new_node in node.connected() {
+//                 if last_bit_array[new_node.get_index()] {
+//                     flip_count += 1;
+//                     count.inc(1);
+//                     bit_array.set(i, true);
+//                     break;
+//                 }
+//             }
+//         }
+//         progress.abandon();
+//         count.abandon();
+//         println!("States found at depth {}: {}", depth, flip_count);
+
+//         if bit_array.all() {
+//             return bit_array;
+//         }
+//     }
+// }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_phase1_pruning_table() {
+        use crate::phases::Phase1;
+        let pruning_table = gen_pruning_table::<HashMapPruningTable<_>, Phase1>(2);
+        // Should have found 166 nodes
+        assert_eq!(pruning_table.data.len(), 166);
     }
-    println!("Depth: {}: {} nodes", queue.depth, num_count);
 
-    // reverse search mode
-    let mut depth = queue.depth;
-    loop {
-        depth += 1;
-        let mpb = indicatif::MultiProgress::new();
-
-        let progress = indicatif::ProgressBar::new(T::N_STATES as u64)
-            .with_message(format!("Searching depth {:?}", depth));
-        progress.set_style(
-            indicatif::ProgressStyle::with_template(
-                "{msg}: {percent}% of {human_len} nodes {bar:40} {eta}",
-            )
-            .unwrap(),
-        );
-        let progress = mpb.add(progress);
-
-        let count = indicatif::ProgressBar::new(T::N_STATES as u64);
-        count.set_style(
-            indicatif::ProgressStyle::with_template(
-                "{percent}% of {human_pos}/{human_len} nodes {bar:40} {eta}",
-            )
-            .unwrap(),
-        );
-
-        let count = mpb.add(count);
-
-        let mut flip_count: u64 = 0;
-
-        let last_bit_array = bit_array.clone();
-
-        for (i, bit) in last_bit_array.iter().enumerate() {
-            progress.inc(1);
-            if bit {
-                continue;
-            }
-
-            let node = T::Node::from_index(i, None);
-
-            for new_node in node.connected() {
-                if last_bit_array[new_node.get_index()] {
-                    flip_count += 1;
-                    count.inc(1);
-                    bit_array.set(i, true);
-                    break;
-                }
-            }
-        }
-        progress.abandon();
-        count.abandon();
-        println!("States found at depth {}: {}", depth, flip_count);
-
-        if bit_array.all() {
-            return bit_array;
-        }
+    #[test]
+    fn test_phase2_pruning_table() {
+        use crate::phases::Phase2;
+        let pruning_table = gen_pruning_table::<HashMapPruningTable<_>, Phase2>(2);
+        // Should have found 152 nodes
+        assert_eq!(pruning_table.data.len(), 152);
     }
-}
 
-#[test]
-fn test_phase1_pruning_table() {
-    let pruning_table = gen_pruning_table::<HashMapPruningTable<_>, Phase1>(2);
-    // Should have found 166 nodes
-    assert_eq!(pruning_table.data.len(), 166);
-}
-
-#[test]
-fn test_phase2_pruning_table() {
-    let pruning_table = gen_pruning_table::<HashMapPruningTable<_>, Phase2>(2);
-    // Should have found 152 nodes
-    assert_eq!(pruning_table.data.len(), 152);
-}
-
-#[test]
-fn test_phase3_pruning_table() {
-    let pruning_table = gen_pruning_table::<HashMapPruningTable<_>, Phase3>(2);
-    // Should have found 70 nodes
-    assert_eq!(pruning_table.data.len(), 70);
+    #[test]
+    fn test_phase3_pruning_table() {
+        use crate::phases::Phase3;
+        let pruning_table = gen_pruning_table::<HashMapPruningTable<_>, Phase3>(2);
+        // Should have found 70 nodes
+        assert_eq!(pruning_table.data.len(), 70);
+    }
 }
