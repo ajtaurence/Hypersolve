@@ -115,18 +115,12 @@ impl Sign {
 
     /// Returns whether the sign is positive
     pub const fn is_positive(&self) -> bool {
-        match self {
-            Self::Pos => true,
-            _ => false,
-        }
+        matches!(self, Self::Pos)
     }
 
     /// Returns whether the sign is negative
     pub const fn is_negative(&self) -> bool {
-        match self {
-            Self::Neg => true,
-            _ => false,
-        }
+        matches!(self, Self::Neg)
     }
 }
 
@@ -234,26 +228,17 @@ impl std::ops::Mul for ZeroOrSign {
 impl ZeroOrSign {
     /// Returns whether the value is positive
     pub const fn is_positive(&self) -> bool {
-        match self {
-            Self::Pos => true,
-            _ => false,
-        }
+        matches!(self, Self::Pos)
     }
 
     /// Returns whether the value is negative
     pub const fn is_negative(&self) -> bool {
-        match self {
-            Self::Neg => true,
-            _ => false,
-        }
+        matches!(self, Self::Neg)
     }
 
     /// Returns whether the value is zero
     pub const fn is_zero(&self) -> bool {
-        match self {
-            Self::Zero => true,
-            _ => false,
-        }
+        matches!(self, Self::Zero)
     }
 }
 

@@ -29,21 +29,12 @@ where
 {
     const NUM_INDICES: u64 = T::NUM_INDICES.pow(N as u32);
 
-    fn from_index(mut index: u64) -> Self {
-        let mut result = Vector::from_elem(T::from_index(0));
-
-        for i in 0..N {
-            result[i] = T::from_index(index % T::NUM_INDICES);
-            index /= T::NUM_INDICES;
-        }
-        result
+    fn from_index(index: u64) -> Self {
+        Vector(<[T; N]>::from_index(index))
     }
 
     fn to_index(self) -> u64 {
-        self.iter()
-            .enumerate()
-            .map(|(i, value)| value.clone().to_index() * T::NUM_INDICES.pow(i as u32))
-            .sum()
+        self.0.to_index()
     }
 }
 
@@ -74,10 +65,10 @@ where
 {
     fn sum<I: Iterator<Item = Self>>(mut iter: I) -> Self {
         if let Some(mut result) = iter.next() {
-            while let Some(next) = iter.next() {
+            for next in iter {
                 result += next;
             }
-            return result;
+            result
         } else {
             num_traits::zero()
         }
@@ -143,7 +134,7 @@ impl<T, const N: usize> From<[T; N]> for Vector<T, N> {
 
 impl<T, const N: usize> From<Vector<T, N>> for [T; N] {
     fn from(value: Vector<T, N>) -> Self {
-        value.into_slice()
+        value.into_array()
     }
 }
 
@@ -183,13 +174,7 @@ macro_rules! impl_binary_op_for_vector {
         {
             type Output = Vector<O, N>;
             fn $opmethod(self, rhs: Vector<P, N>) -> Self::Output {
-                let mut result: Vector<O, N> =
-                    unsafe { std::mem::MaybeUninit::uninit().assume_init() };
-
-                for i in 0..N {
-                    result[i] = self[i].clone().$opmethod(rhs[i].clone())
-                }
-                result
+                Vector::from_function(|i| self[i].clone().$opmethod(rhs[i].clone()))
             }
         }
         impl<T, U, const N: usize> std::ops::$optraitassign<Vector<U, N>> for Vector<T, N>
@@ -221,19 +206,14 @@ impl<T, const N: usize> Vector<T, N> {
     where
         T: Clone,
     {
-        let mut result: Self = unsafe { std::mem::MaybeUninit::uninit().assume_init() };
-
-        for i in 0..N {
-            result[i] = elem.clone()
-        }
-        result
+        Vector::from_function(|_| elem.clone())
     }
 
     pub const fn from_array(slice: [T; N]) -> Self {
         Self(slice)
     }
 
-    pub fn into_slice(self) -> [T; N] {
+    pub fn into_array(self) -> [T; N] {
         self.0
     }
 
@@ -242,19 +222,31 @@ impl<T, const N: usize> Vector<T, N> {
     where
         F: FnMut(usize) -> T,
     {
-        let mut result: Self = unsafe { std::mem::MaybeUninit::uninit().assume_init() };
-        for i in 0..N {
-            result[i] = f(i)
+        // create an unitialized array
+        let mut result: [std::mem::MaybeUninit<T>; N] =
+            unsafe { std::mem::MaybeUninit::uninit().assume_init() };
+
+        // fill the array
+        for (i, entry) in result.iter_mut().enumerate() {
+            *entry = std::mem::MaybeUninit::new(f(i));
         }
-        result
+
+        // transmute the type of the array now that it is initialized
+        let transmuted_result = unsafe { std::ptr::read(result.as_ptr() as *const [T; N]) };
+
+        // make sure drop doesn't get called on the original array
+        std::mem::forget(result);
+
+        // return the vector
+        Vector(transmuted_result)
     }
 
     /// Maps a function over every element
-    pub fn map<F, U>(self, mut f: F) -> Vector<U, N>
+    pub fn map<F, U>(self, f: F) -> Vector<U, N>
     where
         F: FnMut(T) -> U,
     {
-        Vector(self.into_slice().map(|i| f(i)))
+        Vector(self.into_array().map(f))
     }
 
     /// The sum of the components of this vector
@@ -299,8 +291,8 @@ impl<T, const N: usize> Vector<T, N> {
     {
         let mut result = self.0.clone();
 
-        for i in 0..N {
-            result[i] = self.0[permutation.into_inner()[i]].clone();
+        for (i, value) in result.iter_mut().enumerate() {
+            *value = self.0[permutation.into_inner()[i]].clone();
         }
         Vector(result)
     }
@@ -489,5 +481,15 @@ mod tests {
     fn vector_num_casting() {
         let _: Vector<i8, 5> = Vector::<f32, 5>::from_array([1., 0., 2., 5., -1.]).into();
         let _: Vector<f64, 5> = Vector::<f32, 5>::from_array([1., 0., 2., 5., -1.]).into();
+    }
+
+    #[test]
+    fn vector_from_index() {
+        let vector = Vector::<bool, 10>::from_index(10);
+
+        assert_eq!(
+            vector,
+            Vector([false, true, false, true, false, false, false, false, false, false])
+        );
     }
 }

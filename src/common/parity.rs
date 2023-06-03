@@ -17,17 +17,11 @@ impl std::ops::Mul for Parity {
 
 impl Parity {
     pub fn is_even(&self) -> bool {
-        match self {
-            Parity::Even => true,
-            _ => false,
-        }
+        matches!(self, Self::Even)
     }
 
     pub fn is_odd(&self) -> bool {
-        match self {
-            Parity::Odd => true,
-            _ => false,
-        }
+        matches!(self, Self::Odd)
     }
 
     pub fn opposite(&self) -> Self {

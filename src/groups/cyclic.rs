@@ -118,7 +118,7 @@ impl<const N: usize> Cyclic<N> {
 
     /// Iterates over all the cyclic group elements
     pub fn iter_elements() -> impl Iterator<Item = Self> {
-        Box::new((0..N).map(|i| Cyclic(i)))
+        Box::new((0..N).map(Cyclic))
     }
 }
 

@@ -1,4 +1,4 @@
-use crate::{common::Axis, node_cube::node::MOVE_AXIS};
+use crate::{common::Axis, node_cube::MOVE_AXIS};
 
 /// Hypersolve move index
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -31,6 +31,7 @@ impl Move {
     }
 }
 
+/// An iterator over a range of moves
 pub struct MoveIterator {
     moves: std::ops::Range<Move>,
     current_move: Move,
@@ -49,11 +50,11 @@ impl Iterator for MoveIterator {
     type Item = Move;
     fn next(&mut self) -> Option<Self::Item> {
         if self.current_move == self.moves.end {
-            return None;
+            None
         } else {
             let result = self.current_move;
             self.current_move = Move(self.current_move.as_u8() + 1);
-            return Some(result);
+            Some(result)
         }
     }
 

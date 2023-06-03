@@ -5,6 +5,7 @@ use super::*;
 
 use crate::{groups::A4, piece_cube::puzzle::PieceCube};
 
+/// A cube representation for computing moves quickly as long as they don't affect the LDBO piece
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub struct CubieCube {
     pub orientation: Orientation<A4>,
@@ -49,7 +50,7 @@ impl CubieCube {
 
 #[cfg(test)]
 mod tests {
-    use crate::{node_cube::node::Node, phases::Phase};
+    use crate::{node_cube::Node, phases::Phase};
 
     use super::*;
 
@@ -65,7 +66,7 @@ mod tests {
 
     #[test]
     fn test_phase2_pruning_table_with_cubie_cube() {
-        use crate::node_cube::node::Phase2Node;
+        use crate::node_cube::Phase2Node;
         use crate::phases::Phase2;
         use itertools::Itertools;
         use std::collections::HashSet;
@@ -75,7 +76,7 @@ mod tests {
 
         let mut one_move_states = Vec::new();
 
-        (0..Phase2::N_MOVES).into_iter().for_each(|move_index| {
+        (0..Phase2::N_MOVES).for_each(|move_index| {
             let cube = CubieCube::solved().apply_move(Move(move_index as u8));
             let phase2_node = Phase2Node::from(cube);
             one_move_states.push(cube);

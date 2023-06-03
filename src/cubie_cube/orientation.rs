@@ -6,6 +6,7 @@ use crate::{
 };
 use num_traits::FromPrimitive;
 
+/// Describes the orientation of pieces
 #[derive(Debug, PartialEq, Default, Clone, Copy)]
 pub struct Orientation<T> {
     pub state: [T; 15],
@@ -63,8 +64,8 @@ impl<T: Identity + Copy + PartialEq> Orientation<T> {
     {
         let mut result = [U::Output::IDENTITY; 15];
 
-        for i in 0..15 {
-            result[i] = action.state[i] * self.state[i];
+        for (i, value) in result.iter_mut().enumerate() {
+            *value = action.state[i] * self.state[i];
         }
 
         Orientation { state: result }
@@ -108,8 +109,8 @@ impl Orientation<K4> {
     pub fn from_k4_coord(int: u32) -> Orientation<K4> {
         let mut result = [K4::E; 15];
 
-        for i in 0..15 {
-            result[i] = K4::from_u32((int >> (2 * i)) & 3).unwrap();
+        for (i, value) in result.iter_mut().enumerate() {
+            *value = K4::from_u32((int >> (2 * i)) & 3).unwrap();
         }
 
         Orientation::<K4> { state: result }
@@ -139,8 +140,8 @@ impl Orientation<C3> {
 
         let mut coord = c3_coord;
 
-        for i in 0..14 {
-            result[i] = C3::from_u32(coord % 3).unwrap();
+        for value in result.iter_mut().take(14) {
+            *value = C3::from_u32(coord % 3).unwrap();
             coord /= 3;
         }
 

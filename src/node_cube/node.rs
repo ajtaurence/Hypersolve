@@ -69,8 +69,8 @@ fn gen_c3_move_table() -> Box<[[u32; Phase2::N_MOVES]; N_C3_COORD_STATES as usiz
             permutation: Permutation::solved(),
         };
 
-        for j in 0..(Phase2::N_MOVES) {
-            entry[j] = cube.apply_move(Move(j as u8)).orientation.c3_coord();
+        for (j, entry) in entry.iter_mut().enumerate().take(Phase2::N_MOVES) {
+            *entry = cube.apply_move(Move(j as u8)).orientation.c3_coord();
         }
     });
 
@@ -131,6 +131,8 @@ fn gen_o_move_table() -> Box<[[u16; Phase3::N_MOVES]; N_O_COORD_STATES as usize]
     table.try_into().unwrap()
 }
 
+/// A trait for highly optimized computation of how certain aspects of the cube
+/// are affected by twists.
 pub trait Node: Identity + PartialEq + Copy + From<CubieCube> {
     const N_STATES: usize;
 
@@ -183,6 +185,7 @@ pub trait Node: Identity + PartialEq + Copy + From<CubieCube> {
     }
 }
 
+/// A node representing a cube state in phase 1
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Phase1Node {
     orientation: Orientation<K4>,
@@ -258,6 +261,7 @@ impl From<CubieCube> for Phase1Node {
     }
 }
 
+/// A node representing a cube state in phase 2
 #[derive(Default, Clone, Copy)]
 pub struct Phase2Node {
     c3_coord: u32,
@@ -300,7 +304,7 @@ impl Node for Phase2Node {
     }
 
     fn apply_move(self, move_index: Move) -> Self {
-        load_or_generate_data!(static C3_MOVE_TABLE: Box<[[u32; Phase2::N_MOVES as usize]; N_C3_COORD_STATES as usize]> = gen_c3_move_table(), "c3.move");
+        load_or_generate_data!(static C3_MOVE_TABLE: Box<[[u32; Phase2::N_MOVES]; N_C3_COORD_STATES as usize]> = gen_c3_move_table(), "c3.move");
 
         let c3_coord = C3_MOVE_TABLE[self.c3_coord as usize][move_index.as_usize()];
         let io_coord = IO_MOVE_TABLE[self.io_coord as usize][move_index.as_usize()];
@@ -328,6 +332,7 @@ impl From<CubieCube> for Phase2Node {
     }
 }
 
+/// A node representing a cube state in phase 3
 #[derive(Default, Clone, Copy)]
 pub struct Phase3Node {
     i_coord: u16,
@@ -361,7 +366,7 @@ impl Node for Phase3Node {
     fn from_index(index: u64, last_move: Option<Move>) -> Self {
         let o_coord = (index / (N_I_COORD_STATES / 2) as u64) as u16;
         let mut i_coord = (index % (N_I_COORD_STATES / 2) as u64) as u16;
-        if o_coord >= (N_O_COORD_STATES / 2) as u16 {
+        if o_coord >= (N_O_COORD_STATES / 2) {
             i_coord += N_I_COORD_STATES / 2;
         };
 
@@ -410,7 +415,7 @@ mod tests {
     #[test]
     fn test_orientation_to_from_c3_coord() {
         use crate::groups::A4;
-        for i in (0..N_C3_COORD_STATES).into_iter().step_by(10) {
+        for i in (0..N_C3_COORD_STATES).step_by(10) {
             let orientation: Orientation<A4> = Orientation::from_c3_coord(i).into();
             assert_eq!(orientation.c3_coord(), i)
         }

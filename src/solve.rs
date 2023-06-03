@@ -9,8 +9,8 @@ use std::{
 
 use crate::{
     cubie_cube::{CubieCube, Move},
-    node_cube::{node::Node, Phase1Node, Phase2Node, Phase3Node},
-    piece_cube::{puzzle::PieceCube, twist::Twist},
+    node_cube::{Node, Phase1Node, Phase2Node, Phase3Node},
+    piece_cube::{puzzle::PieceCube, Twist},
 };
 
 /// Returns an iterator over all solutions of the specified length for the given node
@@ -85,8 +85,8 @@ fn fast_solve_single_thread(
             let phase3_node = Phase3Node::from(phase3_cube);
 
             // if the lower bound on the solution length is equal to or longer than the shortest solution then don't bother to search it
-            if phase2_sol_length + phase3_node.get_depth_bound() as u32 - 1 // -1 because we could have a move cancellation
-                >= shortest_sol_length.load(Ordering::Relaxed)
+            if phase2_sol_length + phase3_node.get_depth_bound() as u32
+                > shortest_sol_length.load(Ordering::Relaxed)
             {
                 break;
             }
@@ -109,7 +109,7 @@ fn fast_solve_single_thread(
                     .into_iter()
                     .chain(phase2_sol.clone())
                     .chain(phase3_sol)
-                    .map(|m| Twist::from(m))
+                    .map(Twist::from)
                     .collect();
                 if let Some(rotation) = cube_rotation {
                     full_sol.insert(0, rotation)
@@ -133,7 +133,7 @@ pub fn fast_solve(cube: PieceCube, max_sol_length: Option<u32>) -> Receiver<(Vec
     // spawn threads to search for solutions in parallel from different orientations
     thread::spawn(move || {
         // TODO: spawn a thread for each orientation
-        fast_solve_single_thread(cube.into(), length.clone(), raw_sol_send.clone(), None);
+        fast_solve_single_thread(cube.into(), length.clone(), raw_sol_send, None);
     });
 
     // create a channel for converting solutions

@@ -63,8 +63,8 @@ impl TryFrom<Permutation<4>> for A4 {
     }
 }
 
-impl From<crate::piece_cube::pieces::Piece> for A4 {
-    fn from(piece: crate::piece_cube::pieces::Piece) -> Self {
+impl From<crate::piece_cube::Piece> for A4 {
+    fn from(piece: crate::piece_cube::Piece) -> Self {
         // get the permutation of the axes of the piece
         let mut axis_permutation = piece.to_axis_permutation();
 

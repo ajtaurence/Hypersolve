@@ -53,6 +53,7 @@ pub enum LayerEnum {
     Both = 3,
 }
 
+/// A twist that can be applied to the cube
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Twist {
     pub face: Face,
@@ -119,7 +120,7 @@ impl Twist {
         let (face, direction) = MC4D_TWISTS
             .get(twist_id)
             .ok_or(InvalidTwistId(twist_id_string.clone()))?
-            .ok_or(InvalidTwistId(twist_id_string.clone()))?;
+            .ok_or(InvalidTwistId(twist_id_string))?;
 
         let twist_amount_string = segments.next().ok_or(MissingTwistAmount)?.to_owned();
 
@@ -166,7 +167,7 @@ impl Twist {
 
         let dir: TwistDirectionEnum = self.direction;
         if let Some(quarter_turn) = dir.half() {
-            self.direction = quarter_turn.into();
+            self.direction = quarter_turn;
             return format!("{0} {0}", Self::to_mc4d_string(self));
         }
         let sticker_id = *MC4D_TWIST_IDS.get(&(self.face, self.direction)).unwrap();

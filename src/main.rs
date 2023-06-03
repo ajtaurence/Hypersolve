@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand, ValueEnum};
-use hypersolve::{piece_cube::{twist::Twist, puzzle::PieceCube}, solve::fast_solve};
+use hypersolve::{piece_cube::{Twist, puzzle::PieceCube}, solve::fast_solve};
 use itertools::Itertools;
 
 #[derive(Parser)]
@@ -60,17 +60,7 @@ enum SimplifyMode {
 }
 
 fn main() {
-    
-    let args = Cli::parse_from(["hypersolve", "solve", "58,1,1"]);
-
-    let twist = Twist::from_mc4d_twist_string("58,1,1").unwrap();
-    let twist = Twist::new(twist.face, twist.direction, hypersolve::piece_cube::twist::LayerEnum::Both);
-    let cube = PieceCube::solved().twist(twist);
-    println!("{:?}", cube.pieces.map(|mut piece| {piece.faces.sort(); piece}));
-
-    // let args = Cli::parse();
-    
-    
+    let args = Cli::parse();    
 
     match args.command {
         Commands::Solve { moves, mode } => {

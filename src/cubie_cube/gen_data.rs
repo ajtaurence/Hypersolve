@@ -1,6 +1,6 @@
 use super::*;
 
-use crate::{groups::A4, phases::*, piece_cube::twist::Twist};
+use crate::{groups::A4, phases::*, piece_cube::Twist};
 
 const_data!(pub HYPERSOLVE_TWISTS: [Twist; Phase1::N_MOVES] =  gen_hypersolve_twists());
 const_data!(pub PERM_MOVE_TABLE: [Permutation; Phase1::N_MOVES] =  gen_perm_move_table());

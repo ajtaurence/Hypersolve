@@ -5,6 +5,9 @@ pub trait Index {
     const NUM_INDICES: u64;
 
     /// Converts the index into the corresponding value
+    ///
+    /// # Panics
+    /// Panics if the index is out of the valid range
     fn from_index(index: u64) -> Self;
 
     /// Converts the value into its index
@@ -47,7 +50,7 @@ impl<T: Index> Iterator for IndexIterator<T> {
         let result = Some(T::from_index(self.index));
         self.index += 1;
 
-        return result;
+        result
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -60,5 +63,75 @@ impl<T: Index> Iterator for IndexIterator<T> {
 impl<T: Index> ExactSizeIterator for IndexIterator<T> {
     fn len(&self) -> usize {
         (self.num_indices - self.index) as usize
+    }
+}
+
+macro_rules! impl_index {
+    ($type:ty) => {
+        impl Index for $type {
+            const NUM_INDICES: u64 = Self::MAX as u64 + 1;
+
+            fn from_index(index: u64) -> Self {
+                assert!(index < Self::NUM_INDICES);
+                index as Self
+            }
+
+            fn to_index(self) -> u64 {
+                self as u64
+            }
+        }
+    };
+}
+
+impl Index for bool {
+    const NUM_INDICES: u64 = 2;
+
+    fn from_index(index: u64) -> Self {
+        match index {
+            0 => false,
+            1 => true,
+            _ => panic!("index {} out of bounds", index),
+        }
+    }
+
+    fn to_index(self) -> u64 {
+        self as u64
+    }
+}
+
+for_each!(impl_index!(u8, u16, u32));
+
+impl<T, const N: usize> Index for [T; N]
+where
+    T: Index + Clone,
+{
+    const NUM_INDICES: u64 = T::NUM_INDICES.pow(N as u32);
+
+    fn from_index(mut index: u64) -> Self {
+        // create an unitialized array
+        let mut result: [std::mem::MaybeUninit<T>; N] =
+            unsafe { std::mem::MaybeUninit::uninit().assume_init() };
+
+        // fill the array
+        for entry in result.iter_mut() {
+            *entry = std::mem::MaybeUninit::new(T::from_index(index % T::NUM_INDICES));
+            index /= T::NUM_INDICES;
+        }
+
+        // transmute the type of the array now that it is initialized
+        let transmuted_result = unsafe { std::ptr::read(result.as_ptr() as *const [T; N]) };
+
+        // make sure drop doesn't get called on the original array
+        std::mem::forget(result);
+
+        // return the array
+        transmuted_result
+    }
+
+    fn to_index(self) -> u64 {
+        self.iter()
+            .enumerate()
+            .map(|(i, value)| value.clone().to_index() * T::NUM_INDICES.pow(i as u32))
+            .sum()
     }
 }

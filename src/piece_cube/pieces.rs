@@ -10,6 +10,8 @@ use crate::{
 
 use super::*;
 
+/// A piece on the cube represented by a vector of 4 faces. Each face represents the
+/// face on which the sticker from that axis currently is.
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Piece {
     /// The face that the piece on the given axis is currently on
@@ -67,7 +69,7 @@ impl Piece {
     }
 
     pub fn current_location(self) -> PieceLocation {
-        let mut solved_faces = self.faces.clone();
+        let mut solved_faces = self.faces;
         solved_faces.sort();
 
         Piece::new(solved_faces).into()
@@ -134,6 +136,7 @@ impl Piece {
     }
 }
 
+/// Describes locations that pieces can be in rather than pieces themselves
 #[derive(Copy, Clone, PartialEq, Eq, Default)]
 pub struct PieceLocation {
     x: Sign,
@@ -144,7 +147,7 @@ pub struct PieceLocation {
 
 impl From<Piece> for PieceLocation {
     fn from(piece: Piece) -> Self {
-        let mut faces = piece.faces.clone();
+        let mut faces = piece.faces;
         faces.sort();
         PieceLocation::from_signs(
             faces[0].sign(),
@@ -191,6 +194,7 @@ impl IndexMut<Axis> for PieceLocation {
 }
 
 impl PieceLocation {
+    /// Returns the piece that is solved in this location
     pub const fn solved_piece(&self) -> Piece {
         Piece::new(Vector4::from_array([
             Face::from_axis_sign(Axis::X, self.x),
@@ -200,6 +204,7 @@ impl PieceLocation {
         ]))
     }
 
+    /// Returns a piece location from signs along each axis
     pub const fn from_signs(x: Sign, y: Sign, z: Sign, w: Sign) -> PieceLocation {
         PieceLocation { x, y, z, w }
     }
@@ -214,9 +219,10 @@ impl PieceLocation {
 
     /// Iterates over all piece locations
     pub fn iter() -> impl Iterator<Item = Self> {
-        (0..=16).map(|i| PieceLocation::from_index(i))
+        (0..=16).map(PieceLocation::from_index)
     }
 
+    /// Gets the index of this location
     pub const fn index(self) -> usize {
         // Toggle the w bit to make face I get indexed before O
         self.x.to_binary() * 2_usize.pow(0)
@@ -225,6 +231,7 @@ impl PieceLocation {
             + (self.w.to_binary() ^ 1) * 2_usize.pow(3)
     }
 
+    /// Gets the location from this index
     pub const fn from_index(index: usize) -> PieceLocation {
         // Toggle the w bit to make face I get indexed before O
         let w = (index >> 3 & 0b00000001) ^ 1;
@@ -239,6 +246,7 @@ impl PieceLocation {
         )
     }
 
+    /// Returns whether this piece location is affected by the given twist
     pub fn is_affected_by_twist(self, twist: Twist) -> bool {
         self.solved_piece().is_affected_by_twist(twist)
     }

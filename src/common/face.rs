@@ -2,6 +2,7 @@ use super::*;
 
 use strum::EnumCount;
 
+/// Faces of the hypercube
 #[derive(
     Debug,
     Copy,

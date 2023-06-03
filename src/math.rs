@@ -1,9 +1,9 @@
 /// Computes factorials recursively
 pub const fn compute_factorial(n: u64) -> u64 {
     if n == 0 {
-        return 1;
+        1
     } else {
-        return n * compute_factorial(n - 1);
+        n * compute_factorial(n - 1)
     }
 }
 
@@ -11,7 +11,7 @@ const FACTORIAL: [u64; 16] = {
     let mut result = [0; 16];
     let mut i = 0;
     while i < 16 {
-        result[i] = compute_factorial(i as u64) as u64;
+        result[i] = compute_factorial(i as u64);
         i += 1;
     }
     result

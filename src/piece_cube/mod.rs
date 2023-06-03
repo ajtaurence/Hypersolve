@@ -1,11 +1,11 @@
-// Much of the code for this module was taken from Hyperspeedcube: https://github.com/HactarCE/Hyperspeedcube
+// Much of the code for this module was taken from or closely resembles Hyperspeedcube: https://github.com/HactarCE/Hyperspeedcube
 
-pub mod pieces;
+mod pieces;
 pub mod puzzle;
-pub mod twist;
+mod twist;
 
-use pieces::*;
-use twist::*;
+pub use pieces::*;
+pub use twist::*;
 
 #[cfg(test)]
 mod tests {

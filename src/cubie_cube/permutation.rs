@@ -1,10 +1,10 @@
 use crate::math;
-use crate::node_cube::node::N_O_COORD_STATES;
 use crate::{
-    node_cube::node::{N_IO_COORD_STATES, N_I_COORD_STATES},
+    node_cube::{N_IO_COORD_STATES, N_I_COORD_STATES, N_O_COORD_STATES},
     piece_cube::puzzle::PieceCube,
 };
 
+/// Describes the permutation of pieces
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Permutation(pub [u8; 15]);
 
@@ -101,8 +101,8 @@ impl Permutation {
     pub fn i_coord(self) -> u16 {
         let mut i_map: [u8; 8] = [0; 8];
 
-        for i in 0..8 {
-            i_map[i] = self.into_inner()[i] % 8;
+        for (i, value) in i_map.iter_mut().enumerate() {
+            *value = self.into_inner()[i] % 8;
         }
 
         let mut i_coord =
@@ -184,8 +184,8 @@ impl Permutation {
         // It is common that the coord is 0 so skip the calculation in this case
         if coord == 0 {
             let mut result = [false; 15];
-            for i in 8..15 {
-                result[i] = true;
+            for value in result.iter_mut().skip(8) {
+                *value = true;
             }
             return result;
         }
@@ -218,7 +218,7 @@ impl Permutation {
         let is_odd = coord >= N_I_COORD_STATES / 2;
         let mut coord = coord % (N_I_COORD_STATES / 2);
 
-        let mut permutation = [0 as u8; 8];
+        let mut permutation = [0_u8; 8];
 
         for i in (0..8).rev() {
             let left = if i != 0 && i != 1 {
@@ -264,7 +264,7 @@ impl Permutation {
         let is_odd = coord >= N_O_COORD_STATES / 2;
         let mut coord = coord % (N_O_COORD_STATES / 2);
 
-        let mut permutation = [0 as u8; 7];
+        let mut permutation = [0_u8; 7];
 
         for i in (0..7).rev() {
             let left = if i != 0 && i != 1 {

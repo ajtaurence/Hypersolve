@@ -1,14 +1,13 @@
-use std::ops::{Index, IndexMut};
-
-use itertools::Itertools;
+use super::*;
 
 use crate::{
     common::{Sign, Vector, Vector4},
     groups::Permutation,
 };
+use itertools::Itertools;
+use std::ops::{Index, IndexMut};
 
-use super::*;
-
+/// High level representation of the cube, capable of computing any move but has slower performance
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct PieceCube {
     pub pieces: Vector<Piece, 16>,
@@ -105,11 +104,6 @@ impl PieceCube {
             .cast();
 
         let solved = Self::solved();
-
-        println!(
-            "{:?}",
-            solved.pieces.map(|piece| Piece { faces: piece.faces })
-        );
 
         // honestly no idea what this is doing ¯\_(ツ)_/¯
         let piece_perm = Permutation::from_array(

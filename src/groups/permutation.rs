@@ -67,10 +67,7 @@ impl<const N: usize> Group for Permutation<N> {
     }
 
     fn is_abelian() -> bool {
-        match N {
-            1 | 2 => true,
-            _ => false,
-        }
+        matches!(N, 1 | 2)
     }
 
     fn group_order() -> usize {
@@ -99,12 +96,12 @@ impl<const N: usize> TryFrom<[usize; N]> for Permutation<N> {
     fn try_from(value: [usize; N]) -> Result<Self, Self::Error> {
         let result = Permutation(value);
         if result.is_valid() {
-            return Ok(result);
+            Ok(result)
         } else {
-            return Err(format!(
+            Err(format!(
                 "Array {:?} contains repeated or skipped indices. Did you start at 0?",
                 value
-            ));
+            ))
         }
     }
 }
@@ -149,7 +146,6 @@ impl<const N: usize> Permutation<N> {
     pub fn iter_permutations() -> impl Iterator<Item = Self> {
         use itertools::Itertools;
         (0..N)
-            .into_iter()
             .permutations(N)
             .map(|p| Permutation(p.try_into().unwrap()))
     }
@@ -163,7 +159,7 @@ impl<const N: usize> Permutation<N> {
             }
             i += 1;
         }
-        return true;
+        true
     }
 
     /// Returns whether the permutation is valid
@@ -273,7 +269,7 @@ impl<const N: usize> Permutation<N> {
     // Returns a the permutation with entries at a and b swapped
     pub fn swap(mut self, a: usize, b: usize) -> Self {
         self.0.swap(a, b);
-        return self;
+        self
     }
 }
 
@@ -340,9 +336,9 @@ mod tests {
 
     #[test]
     fn permutation_self_inverse() {
-        assert_eq!(Permutation([0, 1, 2, 3, 4, 5]).is_self_inverse(), true);
-        assert_eq!(Permutation([1, 0, 2, 3, 4, 5]).is_self_inverse(), true);
-        assert_eq!(Permutation([0, 1, 2, 5, 3, 4]).is_self_inverse(), false);
+        assert!(Permutation([0, 1, 2, 3, 4, 5]).is_self_inverse());
+        assert!(Permutation([1, 0, 2, 3, 4, 5]).is_self_inverse());
+        assert!(!Permutation([0, 1, 2, 5, 3, 4]).is_self_inverse());
     }
 
     #[test]
