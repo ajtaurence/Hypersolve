@@ -26,12 +26,18 @@ where
     } else {
         use std::io::Write;
 
-        println!("Generating {}...", filename);
+        let is_terminal = atty::is(atty::Stream::Stdout);
+
+        if is_terminal {
+            println!("Generating {}...", filename);
+        }
 
         // generate the object
         let bytes = rkyv::to_bytes::<_, 0>(&f()).expect("unable to serialize object to bytes");
 
-        println!("Saving to file...");
+        if is_terminal {
+            println!("Saving to file...");
+        }
 
         // write the bytes to the file
         let mut file =
@@ -39,7 +45,9 @@ where
         file.write_all(bytes.as_slice())
             .expect("unable to write data file");
 
-        println!("Finished");
+        if is_terminal {
+            println!("Finished");
+        }
 
         bytes.to_vec()
     }
@@ -48,21 +56,17 @@ where
 /// Loads data from a file at runtime and performs zero copy deserialization using rkyv.
 /// If the file is not present then the data will be generated from the given function.
 macro_rules! load_or_generate_data {
-    (static $name:ident: $type:ty = $expr:expr, $filename:literal) => {
-
-        lazy_static::lazy_static!(
-            static ref $name: &'static <$type as rkyv::Archive>::Archived = {
+    ($vis:vis static $name:ident: $type:ty = $expr:expr, $filename:literal) => {
+        $vis static $name: once_cell::sync::Lazy<&<$type as rkyv::Archive>::Archived> =
+            once_cell::sync::Lazy::new(|| {
                 // generate the static bytes
-                lazy_static::lazy_static!(
-                    static ref BYTES: Vec<u8> = crate::macros::load_or_generate_bytes::<$type, _>(|| $expr, $filename);
-                );
+                static BYTES: once_cell::sync::Lazy<Vec<u8>> = once_cell::sync::Lazy::new(|| {
+                    crate::macros::load_or_generate_bytes::<$type, _>(|| $expr, $filename)
+                });
 
                 // interpret an archived reference from the bytes
                 unsafe { rkyv::archived_root::<$type>(&BYTES[..]) }
-            };
-        );
-
-
+            });
     };
 }
 
@@ -74,29 +78,8 @@ macro_rules! load_or_generate_data {
 /// );
 #[cfg(feature = "gen-const-data")]
 macro_rules! const_data {
-    (pub $name:ident: $type:ty = $expr:expr) => {
-        pub static $name: once_cell::sync::Lazy<Box<$type>> = once_cell::sync::Lazy::new(|| {
-            union Transmute<'a> {
-                bytes: &'a[u8; { std::mem::size_of::<$type>() }],
-                obj: &'a$type,
-            }
-
-            use std::io::Write;
-
-            let data = $expr;
-            std::fs::create_dir_all(concat!(env!("CARGO_MANIFEST_DIR"),
-            "\\const_data")).expect("unable to create const_data directory");
-            let mut file =
-                std::fs::File::create(concat!(env!("CARGO_MANIFEST_DIR"),
-                "\\const_data\\", stringify!($name), ".dat"))
-                    .expect("unable to write const data");
-            file.write_all(unsafe { Transmute { obj: data.as_ref() }.bytes })
-                .expect("unable to write const data");
-            data
-        });
-    };
-    ($name:ident: $type:ty = $expr:expr) => {
-        pub static $name: once_cell::sync::Lazy<Box<$type>> = once_cell::sync::Lazy::new(|| {
+    ($vis:vis $name:ident: $type:ty = $expr:expr) => {
+        $vis static $name: once_cell::sync::Lazy<Box<$type>> = once_cell::sync::Lazy::new(|| {
             union Transmute<'a> {
                 bytes: &'a[u8; { std::mem::size_of::<$type>() }],
                 obj: &'a$type,
@@ -128,25 +111,8 @@ macro_rules! const_data {
 /// complex_runtime_calculation() must return Box<type>
 #[cfg(not(feature = "gen-const-data"))]
 macro_rules! const_data {
-    (pub $name:ident: $type:ty = $epr:expr) => {
-        pub const $name: $type = unsafe {
-            union Transmute {
-                bytes: [u8; { std::mem::size_of::<$type>() }],
-                obj: $type,
-            }
-            Transmute {
-                bytes: *include_bytes!(concat!(
-                    env!("CARGO_MANIFEST_DIR"),
-                    "\\const_data\\",
-                    stringify!($name),
-                    ".dat"
-                )),
-            }
-            .obj
-        };
-    };
-    ($name:ident: $type:ty = $epr:expr) => {
-        const $name: $type = unsafe {
+    ($vis:vis $name:ident: $type:ty = $epr:expr) => {
+        $vis const $name: $type = unsafe {
             union Transmute {
                 bytes: [u8; { std::mem::size_of::<$type>() }],
                 obj: $type,

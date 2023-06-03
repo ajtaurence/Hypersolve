@@ -60,7 +60,7 @@ enum SimplifyMode {
 }
 
 fn main() {
-    let args = Cli::parse();    
+    let args = Cli::parse();
 
     match args.command {
         Commands::Solve { moves, mode } => {

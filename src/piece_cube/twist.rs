@@ -1,15 +1,13 @@
-use std::{collections::HashMap, error::Error, str::FromStr};
-
-use itertools::iproduct;
-use lazy_static::lazy_static;
-use num_enum::{FromPrimitive, TryFromPrimitive};
-use strum::{EnumIter, IntoEnumIterator};
-use strum_macros::EnumString;
-
 use crate::{
     common::{Axis, Face, Sign, Vector3, Vector4},
     cubie_cube::{Move, HYPERSOLVE_TWISTS},
 };
+use itertools::iproduct;
+use num_enum::{FromPrimitive, TryFromPrimitive};
+use once_cell::sync::Lazy;
+use std::{collections::HashMap, error::Error, str::FromStr};
+use strum::{EnumIter, IntoEnumIterator};
+use strum_macros::EnumString;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TwistParseError {
@@ -104,10 +102,8 @@ impl Twist {
     pub fn from_mc4d_twist_string(s: &str) -> Result<Twist, TwistParseError> {
         use TwistParseError::*;
 
-        lazy_static! {
-            static ref MC4D_TWISTS: Vec<Option<(Face, TwistDirectionEnum)>> =
-                Twist::mc4d_twist_order().collect();
-        }
+        static MC4D_TWISTS: Lazy<Vec<Option<(Face, TwistDirectionEnum)>>> =
+            Lazy::new(|| Twist::mc4d_twist_order().collect());
 
         let mut segments = s.split(',');
 
@@ -157,13 +153,12 @@ impl Twist {
     }
 
     pub fn to_mc4d_string(mut self: Twist) -> String {
-        lazy_static! {
-            static ref MC4D_TWIST_IDS: HashMap<(Face, TwistDirectionEnum), usize> =
-                Twist::mc4d_twist_order()
-                    .enumerate()
-                    .filter_map(|(i, twist)| Some((twist?, i)))
-                    .collect();
-        }
+        static MC4D_TWIST_IDS: Lazy<HashMap<(Face, TwistDirectionEnum), usize>> = Lazy::new(|| {
+            Twist::mc4d_twist_order()
+                .enumerate()
+                .filter_map(|(i, twist)| Some((twist?, i)))
+                .collect()
+        });
 
         let dir: TwistDirectionEnum = self.direction;
         if let Some(quarter_turn) = dir.half() {

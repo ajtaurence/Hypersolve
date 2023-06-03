@@ -108,33 +108,14 @@ fn generate_a4_mul_table() {
     let _ = &*A4_MUL_TABLE;
 }
 
-/// Indexed as [left][right]
-// const A4_MUL_TABLE: [[A4; 12]; 12] = {
-//     use A4::*;
-//     [
-//         [E, R1, R2, U1, R8, R6, U2, R5, R3, U3, R4, R7],
-//         [R1, R2, E, R4, R7, U3, R8, R6, U1, R5, R3, U2],
-//         [R2, E, R1, R3, U2, R5, R7, U3, R4, R6, U1, R8],
-//         [U1, R8, R6, E, R1, R2, U3, R4, R7, U2, R5, R3],
-//         [R8, R6, U1, R5, R3, U2, R1, R2, E, R4, R7, U3],
-//         [R6, U1, R8, R7, U3, R4, R3, U2, R5, R2, E, R1],
-//         [U2, R5, R3, U3, R4, R7, E, R1, R2, U1, R8, R6],
-//         [R5, R3, U2, R8, R6, U1, R4, R7, U3, R1, R2, E],
-//         [R3, U2, R5, R2, E, R1, R6, U1, R8, R7, U3, R4],
-//         [U3, R4, R7, U2, R5, R3, U1, R8, R6, E, R1, R2],
-//         [R4, R7, U3, R1, R2, E, R5, R3, U2, R8, R6, U1],
-//         [R7, U3, R4, R6, U1, R8, R2, E, R1, R3, U2, R5],
-//     ]
-// };
-
-impl Identity for A4 {
-    const IDENTITY: Self = A4::E;
-}
-
 impl BinaryOp for A4 {
     fn binary_op(a: Self, b: Self) -> Self {
         A4_MUL_TABLE[a as usize][b as usize]
     }
+}
+
+impl Identity for A4 {
+    const IDENTITY: Self = A4::E;
 }
 
 impl Inverse for A4 {

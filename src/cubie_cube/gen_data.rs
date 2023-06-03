@@ -29,7 +29,7 @@ fn generate_a4_move_table() {
 fn gen_hypersolve_twists() -> Box<[Twist; Phase1::N_MOVES]> {
     use crate::{
         groups::C3,
-        piece_cube::{pieces::PieceLocation, puzzle::PieceCube},
+        piece_cube::{puzzle::PieceCube, PieceLocation},
     };
     use itertools::Itertools;
     // Generate twist which dont affect LDBO (index 15) and perform unique actions on a cube
