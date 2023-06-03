@@ -6,7 +6,10 @@ use crate::{
     groups::{Identity, K4},
     math,
     phases::{Phase, Phase1, Phase2, Phase3},
-    prune::{gen_pruning_table, ArchivedPruningTable, ArrayPruningTable, HashMapPruningTable},
+    prune::{
+        gen_pruning_table, ArchivedPruningTable, ArrayPruningTable, ExactOrBound,
+        HashMapPruningTable,
+    },
 };
 use rayon::prelude::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 
@@ -144,6 +147,15 @@ pub trait Node: Identity + PartialEq + Copy + From<CubieCube> {
 
     /// Gets the lower bound on the number of moves requied to reach the goal node from this node
     fn get_depth_bound(&self) -> u8;
+
+    /// Gets the depth and returns whether the depth is exact or bounded
+    fn get_depth_exact_or_bound(&self) -> ExactOrBound<u8> {
+        let depth = self.get_depth_bound();
+        match depth < self.get_depth_bound() {
+            true => ExactOrBound::Exact(depth),
+            false => ExactOrBound::LowerBound(depth),
+        }
+    }
 
     /// Applies the given move to the node
     fn apply_move(self, move_index: Move) -> Self;
@@ -375,7 +387,7 @@ impl Node for Phase3Node {
     }
 
     fn get_depth_bound(&self) -> u8 {
-        load_or_generate_data!(static PHASE3_PRUNING_TABLE: ArrayPruningTable<Phase3> = gen_pruning_table::<ArrayPruningTable<_> ,Phase3>(21), "phase3.prun");
+        load_or_generate_data!(static PHASE3_PRUNING_TABLE: ArrayPruningTable<Phase3> = gen_pruning_table::<ArrayPruningTable<_> ,Phase3>(Phase3::MAX_DEPTH), "phase3.prun");
 
         PHASE3_PRUNING_TABLE.get_depth(*self)
     }

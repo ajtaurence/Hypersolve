@@ -82,54 +82,41 @@ fn fast_solve_single_thread(
 
             let phase3_cube = phase2_cube.apply_moves(phase2_sol.clone());
 
-            let phase3_sol = phase_solutions::<Phase3Node>(phase3_cube.into())
-                .next()
-                .unwrap();
+            let phase3_node = Phase3Node::from(phase3_cube);
+
+            // if the lower bound on the solution length is equal to or longer than the shortest solution then don't bother to search it
+            if phase2_sol_length + phase3_node.get_depth_bound() as u32 - 1 // -1 because we could have a move cancellation
+                >= shortest_sol_length.load(Ordering::Relaxed)
+            {
+                break;
+            }
+
+            // get the phase 3 solution
+            let phase3_sol = phase_solutions::<Phase3Node>(phase3_node).next().unwrap();
 
             // TODO: handle move cancelation
             let phase3_sol_length = phase3_sol.len() as u32 + phase2_sol_length;
 
-            loop {
-                let current_shortest_length = shortest_sol_length.load(Ordering::SeqCst);
+            // store the shorter solution length in the atomic
+            if shortest_sol_length.fetch_min(phase3_sol_length, Ordering::AcqRel)
+                > phase3_sol_length
+            {
+                // if the value was swapped then this is the shortest solution
 
-                if phase3_sol_length >= current_shortest_length {
-                    // The new length is not shorter, no need to update
-                    break;
+                // create the full solution
+                let mut full_sol: Vec<_> = phase1_sol
+                    .clone()
+                    .into_iter()
+                    .chain(phase2_sol.clone())
+                    .chain(phase3_sol)
+                    .map(|m| Twist::from(m))
+                    .collect();
+                if let Some(rotation) = cube_rotation {
+                    full_sol.insert(0, rotation)
                 }
 
-                // Attempt to update the length if it is still the same as the current length
-                match shortest_sol_length.compare_exchange_weak(
-                    current_shortest_length,
-                    phase3_sol_length,
-                    Ordering::SeqCst,
-                    Ordering::SeqCst,
-                ) {
-                    // Successfully updated the length
-                    Ok(_) => {
-                        // create the full solution
-                        let mut full_sol: Vec<_> = phase1_sol
-                            .clone()
-                            .into_iter()
-                            .chain(phase2_sol.clone())
-                            .chain(phase3_sol)
-                            .map(|m| Twist::from(m))
-                            .collect();
-                        if let Some(rotation) = cube_rotation {
-                            full_sol.insert(0, rotation)
-                        }
-
-                        // send the solution
-                        let _ = solutions.send((full_sol, phase3_sol_length));
-                        break;
-                    }
-                    // The length was updated by another thread, try again
-                    Err(new_length) => {
-                        if phase3_sol_length >= new_length {
-                            // The new length is not shorter, no need to continue
-                            break;
-                        }
-                    }
-                }
+                // send the solution
+                let _ = solutions.send((full_sol, phase3_sol_length));
             }
         }
     }

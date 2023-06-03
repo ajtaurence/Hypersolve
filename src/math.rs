@@ -1,3 +1,4 @@
+/// Computes factorials recursively
 pub const fn compute_factorial(n: u64) -> u64 {
     if n == 0 {
         return 1;
@@ -16,10 +17,15 @@ const FACTORIAL: [u64; 16] = {
     result
 };
 
+/// Returns factorials up to 15! from a lookup table
+///
+/// # Panics
+/// Will panic if `n > 15`
 pub const fn factorial(n: u8) -> u64 {
     FACTORIAL[n as usize]
 }
 
+/// Computes the binomial coefficient nCk by computing all factorials
 pub const fn compute_n_choose_k(n: u64, k: u64) -> u64 {
     if k > n {
         return 0;
@@ -41,10 +47,15 @@ const N_CHOOSE_K: [[u16; 9]; 16] = {
     result
 };
 
+/// Returns binomial coefficients up to 8 choose 15
+///
+/// # Panics
+/// Will panic if `n > 8` or `k > 15`
 pub const fn n_choose_k(n: u8, k: u8) -> u16 {
     N_CHOOSE_K[n as usize][k as usize]
 }
 
+/// computes the greatest common denomonator of `a` and `b` using Euclid's algorithm
 pub const fn gcd(a: usize, b: usize) -> usize {
     let mut max = a;
     let mut min = b;
@@ -63,6 +74,7 @@ pub const fn gcd(a: usize, b: usize) -> usize {
     }
 }
 
+/// Computes the least common multiple of `a` and `b` by computing their gcd
 pub const fn lcm(a: usize, b: usize) -> usize {
     a * b / gcd(a, b)
 }
