@@ -49,7 +49,7 @@ fn generate_move_axis_table() {
 }
 
 #[cfg(feature = "gen-const-data")]
-fn gen_move_axis_table() -> Box<[Axis; Phase1::N_MOVES]> {
+fn generate_move_axis_table() -> Box<[Axis; Phase1::N_MOVES]> {
     use crate::cubie_cube::HYPERSOLVE_TWISTS;
     use itertools::Itertools;
     HYPERSOLVE_TWISTS
@@ -264,8 +264,8 @@ impl From<CubieCube> for Phase1Node {
 /// A node representing a cube state in phase 2
 #[derive(Default, Clone, Copy)]
 pub struct Phase2Node {
-    c3_coord: u32,
-    io_coord: u16,
+    pub c3_coord: u32,
+    pub io_coord: u16,
     last_move: Option<Move>,
 }
 
@@ -335,8 +335,8 @@ impl From<CubieCube> for Phase2Node {
 /// A node representing a cube state in phase 3
 #[derive(Default, Clone, Copy)]
 pub struct Phase3Node {
-    i_coord: u16,
-    o_coord: u16,
+    pub i_coord: u16,
+    pub o_coord: u16,
     last_move: Option<Move>,
 }
 

@@ -1,3 +1,8 @@
+use crate::{
+    cubie_cube::{CubieCube, Move},
+    node_cube::{Node, Phase1Node, Phase2Node, Phase3Node},
+    piece_cube::{puzzle::PieceCube, Twist, TwistSequence},
+};
 use std::{
     sync::{
         atomic::{AtomicU32, Ordering},
@@ -7,17 +12,12 @@ use std::{
     thread,
 };
 
-use crate::{
-    cubie_cube::{CubieCube, Move},
-    node_cube::{Node, Phase1Node, Phase2Node, Phase3Node},
-    piece_cube::{puzzle::PieceCube, Twist},
-};
-
 /// Returns an iterator over all solutions of the specified length for the given node
 fn phase_solutions_at_depth<N: Node + 'static>(
     node: N,
     sol_length: u32,
     sequence: Vec<Move>,
+    //TODO: Rewrite this function using static dispatch
 ) -> Box<dyn Iterator<Item = Vec<Move>>> {
     // If this is the goal node and the solution is the correct length then return the solution
     if node.is_goal() && sequence.len() as u32 == sol_length {
@@ -53,10 +53,10 @@ fn phase_solutions<N: Node + 'static>(node: N) -> impl Iterator<Item = Vec<Move>
 }
 
 /// Solves the cube on this thread, sending solutions and solution lengths back via `solutions`
-fn fast_solve_single_thread(
+fn fast_solve_internal(
     cube: CubieCube,
     shortest_sol_length: Arc<AtomicU32>,
-    solutions: Sender<(Vec<Twist>, u32)>,
+    solutions: Sender<(TwistSequence, u32)>,
     cube_rotation: Option<Twist>,
 ) {
     let phase1_cube = cube;
@@ -69,7 +69,7 @@ fn fast_solve_single_thread(
             return;
         }
 
-        let phase2_cube = phase1_cube.apply_moves(phase1_sol.clone());
+        let phase2_cube = phase1_cube.apply_moves(phase1_sol.iter());
 
         for phase2_sol in phase_solutions::<Phase2Node>(phase2_cube.into()) {
             // TODO: handle move cancelation
@@ -80,7 +80,7 @@ fn fast_solve_single_thread(
                 break;
             }
 
-            let phase3_cube = phase2_cube.apply_moves(phase2_sol.clone());
+            let phase3_cube = phase2_cube.apply_moves(phase2_sol.iter());
 
             let phase3_node = Phase3Node::from(phase3_cube);
 
@@ -116,16 +116,14 @@ fn fast_solve_single_thread(
                 }
 
                 // send the solution
-                let _ = solutions.send((full_sol, phase3_sol_length));
+                let _ = solutions.send((TwistSequence(full_sol), phase3_sol_length));
             }
         }
     }
-
-    todo!()
 }
 
 /// Solves the given cube on multiple threads, sending solutions and solution lengths back as they are found
-pub fn fast_solve(cube: PieceCube, max_sol_length: Option<u32>) -> Receiver<(Vec<Twist>, u32)> {
+pub fn fast_solve(cube: PieceCube, max_sol_length: Option<u32>) -> Receiver<(TwistSequence, u32)> {
     let length = Arc::new(AtomicU32::new(max_sol_length.unwrap_or(u32::MAX)));
 
     let (raw_sol_send, raw_sol_receive) = channel();
@@ -133,7 +131,7 @@ pub fn fast_solve(cube: PieceCube, max_sol_length: Option<u32>) -> Receiver<(Vec
     // spawn threads to search for solutions in parallel from different orientations
     thread::spawn(move || {
         // TODO: spawn a thread for each orientation
-        fast_solve_single_thread(cube.into(), length.clone(), raw_sol_send, None);
+        fast_solve_internal(cube.into(), length.clone(), raw_sol_send, None);
     });
 
     // create a channel for converting solutions
@@ -148,4 +146,24 @@ pub fn fast_solve(cube: PieceCube, max_sol_length: Option<u32>) -> Receiver<(Vec
     });
 
     complete_sol_receive
+}
+
+/// Finds a scramble that results in the given cube
+pub fn find_scramble(mut cube: CubieCube) -> TwistSequence {
+    let phase1_sol = phase_solutions(Phase1Node::from(cube)).next().unwrap();
+
+    cube = cube.apply_moves(phase1_sol.iter());
+
+    let mut phase2_sol = phase_solutions(Phase2Node::from(cube)).next().unwrap();
+
+    cube = cube.apply_moves(phase2_sol.iter());
+
+    // TODO: sometimes this function isn't able to find a phase 3 solution for some reason?
+    let mut phase3_sol = phase_solutions::<Phase3Node>(cube.into()).next().unwrap();
+
+    let mut sequence = phase1_sol;
+    sequence.append(&mut phase2_sol);
+    sequence.append(&mut phase3_sol);
+
+    TwistSequence::from(sequence).inverse()
 }

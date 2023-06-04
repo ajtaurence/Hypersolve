@@ -1,8 +1,22 @@
-use crate::{common::Axis, node_cube::MOVE_AXIS};
+use super::*;
+
+use crate::{common::Axis, node_cube::MOVE_AXIS, piece_cube::Twist};
+use itertools::Itertools;
 
 /// Hypersolve move index
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Move(pub u8);
+
+impl TryFrom<Twist> for Move {
+    type Error = String;
+    fn try_from(value: Twist) -> Result<Self, Self::Error> {
+        HYPERSOLVE_TWISTS
+            .iter()
+            .find_position(|&&twist| twist == value)
+            .map(|val| Move(val.0 as u8))
+            .ok_or("twist affects LDBO piece".to_owned())
+    }
+}
 
 impl std::ops::Deref for Move {
     type Target = u8;

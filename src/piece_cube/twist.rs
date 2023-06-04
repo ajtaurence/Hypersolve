@@ -2,12 +2,11 @@ use crate::{
     common::{Axis, Face, Sign, Vector3, Vector4},
     cubie_cube::{Move, HYPERSOLVE_TWISTS},
 };
-use itertools::iproduct;
+use itertools::Itertools;
 use num_enum::{FromPrimitive, TryFromPrimitive};
 use once_cell::sync::Lazy;
-use std::{collections::HashMap, error::Error, str::FromStr};
+use std::{collections::HashMap, error::Error, fmt::Display, str::FromStr};
 use strum::{EnumIter, IntoEnumIterator};
-use strum_macros::EnumString;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TwistParseError {
@@ -85,6 +84,10 @@ impl Twist {
 
     pub const fn sign(&self) -> Sign {
         self.face.sign()
+    }
+
+    pub fn inverse(&self) -> Self {
+        Self::new(self.face, self.direction.rev(), self.layer)
     }
 
     pub fn is_cube_rotation(&self) -> bool {
@@ -230,14 +233,25 @@ impl Twist {
     }
 
     pub fn iter_all_twists() -> impl Iterator<Item = Twist> {
-        iproduct!(Face::iter(), TwistDirectionEnum::iter())
+        itertools::iproduct!(Face::iter(), TwistDirectionEnum::iter())
             .map(|(face, direction)| Twist::new(face, direction, LayerEnum::This))
     }
 }
 
 // From Hyperspeedcube
 // https://github.com/HactarCE/Hyperspeedcube/blob/645bbd3e88eec62d25a22c835a7174a0b2f44f99/src/piecepuzzle/common.rs
-#[derive(FromPrimitive, Debug, Default, Copy, Clone, PartialEq, Eq, Hash, EnumIter, EnumString)]
+#[derive(
+    FromPrimitive,
+    Debug,
+    Default,
+    Copy,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    EnumIter,
+    strum_macros::EnumString,
+)]
 #[repr(u8)]
 pub enum TwistDirectionEnum {
     /// 90-degree face (2c) twist clockwise around `R`
@@ -412,6 +426,75 @@ impl TwistDirectionEnum {
 
             _ => None,
         }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TwistSequence(pub Vec<Twist>);
+
+impl From<Vec<Move>> for TwistSequence {
+    fn from(value: Vec<Move>) -> Self {
+        value.into_iter().map(|m| m.into()).collect()
+    }
+}
+
+impl TwistSequence {
+    pub fn inverse(&self) -> Self {
+        self.0.iter().rev().map(|twist| twist.inverse()).collect()
+    }
+}
+
+impl Display for TwistSequence {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            self.0.iter().map(|twist| twist.to_mc4d_string()).join(" ")
+        )
+    }
+}
+
+impl FromStr for TwistSequence {
+    type Err = TwistParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let twists = s.split_whitespace();
+
+        let mut result = Vec::new();
+
+        for twist_string in twists {
+            result.push(Twist::from_str(twist_string)?)
+        }
+
+        Ok(TwistSequence(result))
+    }
+}
+
+impl std::ops::Deref for TwistSequence {
+    type Target = [Twist];
+
+    fn deref(&self) -> &Self::Target {
+        self.0.deref()
+    }
+}
+
+impl std::ops::DerefMut for TwistSequence {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.0.deref_mut()
+    }
+}
+
+impl IntoIterator for TwistSequence {
+    type IntoIter = <Vec<Twist> as IntoIterator>::IntoIter;
+    type Item = Twist;
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
+impl FromIterator<Twist> for TwistSequence {
+    fn from_iter<T: IntoIterator<Item = Twist>>(iter: T) -> Self {
+        Self(iter.into_iter().collect())
     }
 }
 

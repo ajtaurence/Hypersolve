@@ -29,6 +29,10 @@ rayon = "1.7.0"
 clap = { version = "4.3.0", features = ["derive"] }
 rkyv = "0.7.42"
 atty = "0.2.14"
+getrandom = "0.2.9"
+hex = "0.4.3"
+sha2 = "0.10.6"
+colored = "2.0.0"
 
 [features]
 default = []

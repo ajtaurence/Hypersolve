@@ -35,6 +35,21 @@ impl<T: Identity + std::fmt::Debug + Copy + PartialEq + From<A4>> From<PieceCube
     }
 }
 
+impl Orientation<A4> {
+    pub fn from_k4_c3_coords(k4: u32, c3: u32) -> Self {
+        let mut state = [A4::IDENTITY; 15];
+
+        let k4_orientation = Orientation::from_k4_coord(k4);
+        let c3_orientation = Orientation::from_c3_coord(c3);
+
+        for (i, entry) in state.iter_mut().enumerate() {
+            *entry = A4::from_k4_c3(k4_orientation.state[i], c3_orientation.state[i])
+        }
+
+        Orientation { state }
+    }
+}
+
 impl<T: Identity + Copy + PartialEq> Orientation<T> {
     pub fn is_solved(self) -> bool {
         self == Self::solved()

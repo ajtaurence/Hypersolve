@@ -79,6 +79,7 @@ impl PieceCube {
     }
 
     /// Repositions the inner representation of the cube so the state is the same but the LDBO piece is solved
+    /// TODO: Fix this function
     pub fn reposition(mut self) -> Self {
         // get the reference sticker
         let (reference_index, &reference_piece) = self

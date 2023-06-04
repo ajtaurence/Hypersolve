@@ -21,6 +21,22 @@ pub enum A4 {
     R7 = 11,
 }
 
+impl A4 {
+    pub fn from_k4_c3(k4: K4, c3: C3) -> Self {
+        // Make sure this is consistent with C3::from(A4)
+        match (k4, c3) {
+            (K4::E, c3_val) => Self::from(c3_val),
+            (k4_val, C3::E) => Self::from(k4_val),
+            (K4::U1, C3::A) => Self::R8,
+            (K4::U1, C3::AA) => Self::R6,
+            (K4::U2, C3::A) => Self::R5,
+            (K4::U2, C3::AA) => Self::R3,
+            (K4::U3, C3::A) => Self::R4,
+            (K4::U3, C3::AA) => Self::R7,
+        }
+    }
+}
+
 impl From<A4> for Permutation<4> {
     fn from(value: A4) -> Self {
         use A4::*;

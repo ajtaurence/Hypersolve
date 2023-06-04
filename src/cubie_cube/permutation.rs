@@ -1,8 +1,12 @@
+use itertools::Itertools;
+
 use crate::math;
 use crate::{
     node_cube::{N_IO_COORD_STATES, N_I_COORD_STATES, N_O_COORD_STATES},
     piece_cube::puzzle::PieceCube,
 };
+
+// TODO: Many of the functions here can be optimized especially with uninitialized memory
 
 /// Describes the permutation of pieces
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -80,16 +84,16 @@ impl Permutation {
 
     /// Returns a number representing the IO separation state
     pub fn io_coord(self) -> u16 {
-        let mut indices: [u8; 7] = [0; 7];
-
         // Find the indices of `self.map` representing pieces on I
-        let mut index = 0;
-        for i in 0..15 {
-            if self.into_inner()[i] > 7 {
-                indices[index] = i as u8;
-                index += 1;
-            }
-        }
+        let indices: [u8; 7] = self
+            .into_inner()
+            .into_iter()
+            .enumerate()
+            .filter(|(_, piece)| *piece > 7)
+            .map(|(i, _)| i as u8)
+            .collect_vec()
+            .try_into()
+            .unwrap();
 
         (N_IO_COORD_STATES - 1)
             - (0..7)
@@ -99,11 +103,13 @@ impl Permutation {
 
     /// Returns a number representing the permutation state of the I pieces
     pub fn i_coord(self) -> u16 {
-        let mut i_map: [u8; 8] = [0; 8];
-
-        for (i, value) in i_map.iter_mut().enumerate() {
-            *value = self.into_inner()[i] % 8;
-        }
+        let i_map: [u8; 8] = self
+            .into_inner()
+            .into_iter()
+            .filter(|val| *val < 8)
+            .collect_vec()
+            .try_into()
+            .unwrap();
 
         let mut i_coord =
             if crate::groups::Permutation::from_array_unchecked(i_map.map(|i| i as usize))
@@ -128,11 +134,14 @@ impl Permutation {
 
     /// Returns a number representing the permutation state of the O pieces
     pub fn o_coord(self) -> u16 {
-        let mut o_map: [u8; 7] = [0; 7];
-
-        for i in 8..15 {
-            o_map[i - 8] = self.into_inner()[i] % 8;
-        }
+        let o_map: [u8; 7] = self
+            .into_inner()
+            .into_iter()
+            .filter(|val| *val >= 8)
+            .map(|val| val % 8)
+            .collect_vec()
+            .try_into()
+            .unwrap();
 
         let mut o_coord =
             if crate::groups::Permutation::from_array_unchecked(o_map.map(|i| i as usize))

@@ -3,7 +3,16 @@
 
 use super::*;
 
-use crate::{groups::A4, piece_cube::puzzle::PieceCube};
+use crate::{
+    groups::A4,
+    node_cube::{Node, Phase1Node, Phase2Node, Phase3Node},
+    phases::{Phase, Phase1, Phase2, Phase3},
+    piece_cube::puzzle::PieceCube,
+};
+
+/// Total number of cube states
+pub const N_CUBE_STATES: u128 =
+    Phase1::N_STATES as u128 * Phase2::N_STATES as u128 * Phase3::N_STATES as u128;
 
 /// A cube representation for computing moves quickly as long as they don't affect the LDBO piece
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
@@ -27,6 +36,46 @@ impl CubieCube {
         CubieCube::default()
     }
 
+    // Gets the unique index of this cube
+    pub fn get_index(self) -> u128 {
+        let phase1_index = Phase1Node::from(self).get_index() as u128;
+        let phase2_index = Phase2Node::from(self).get_index() as u128;
+        let phase3_index = Phase3Node::from(self).get_index() as u128;
+
+        phase1_index * Phase2::N_STATES as u128 * Phase3::N_STATES as u128
+            + phase2_index * Phase3::N_STATES as u128
+            + phase3_index
+    }
+
+    /// Returns a cube from the unique index
+    pub fn from_index(mut index: u128) -> Result<Self, String> {
+        if index >= N_CUBE_STATES {
+            return Err("Invalid cube state index".to_owned());
+        }
+
+        let phase3_node = Phase3Node::from_index((index % Phase3::N_STATES as u128) as u64, None);
+        index /= Phase3::N_STATES as u128;
+
+        let phase2_node = Phase2Node::from_index((index % Phase2::N_STATES as u128) as u64, None);
+        index /= Phase2::N_STATES as u128;
+
+        let phase1_node = Phase1Node::from_index(index as u64, None);
+
+        let permutation = Permutation::from_coords(
+            phase2_node.io_coord,
+            phase3_node.i_coord,
+            phase3_node.o_coord,
+        );
+
+        let orientation =
+            Orientation::from_k4_c3_coords(phase1_node.get_index() as u32, phase2_node.c3_coord);
+
+        Ok(CubieCube {
+            orientation,
+            permutation,
+        })
+    }
+
     /// Applies the given move to the cubiecube
     pub fn apply_move(self, m: Move) -> CubieCube {
         CubieCube {
@@ -39,10 +88,10 @@ impl CubieCube {
     }
 
     /// Applies the moves to the cubiecube
-    pub fn apply_moves(self, moves: impl IntoIterator<Item = Move>) -> CubieCube {
+    pub fn apply_moves<'a>(self, moves: impl Iterator<Item = &'a Move>) -> CubieCube {
         let mut result = self;
         for m in moves {
-            result = result.apply_move(m);
+            result = result.apply_move(*m);
         }
         result
     }
@@ -94,5 +143,14 @@ mod tests {
 
         // Should have found 152 nodes
         assert_eq!(set.len(), 152)
+    }
+
+    #[test]
+    fn to_from_index() {
+        for i in 0..100 {
+            let index = i * 33500489927290203486927204 + 17;
+
+            assert_eq!(index, CubieCube::from_index(index).unwrap().get_index());
+        }
     }
 }
