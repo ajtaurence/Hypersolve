@@ -79,7 +79,6 @@ impl PieceCube {
     }
 
     /// Repositions the inner representation of the cube so the state is the same but the LDBO piece is solved
-    /// TODO: Fix this function
     pub fn reposition(mut self) -> Self {
         // get the reference sticker
         let (reference_index, &reference_piece) = self
@@ -96,27 +95,33 @@ impl PieceCube {
             faces: piece.faces.permute(axis_perm),
         });
 
-        let reference_signs: Vector4<Sign> =
-            PieceLocation::from_index(15).solved_piece().faces.cast();
-
-        let solved_reference_signs: Vector4<Sign> = PieceLocation::from_index(reference_index)
+        // Signs representing the coordinate of the reference piece before
+        let reference_signs_before: Vector4<Sign> = PieceLocation::from_index(reference_index)
             .solved_piece()
             .faces
             .cast();
 
-        let solved = Self::solved();
+        // Signs representing the coordinate of the reference piece now
+        let reference_signs_now: Vector4<Sign> =
+            PieceLocation::from_index(15).solved_piece().faces.cast();
 
-        // honestly no idea what this is doing ¯\_(ツ)_/¯
+        // Get the sign transformation that takes the reference piece from the location it was to the location now
+        // Formula for the reference signs now is below:
+        // reference_signs_now = reference_signs_before.permute(axis_perm) * transform_signs
+        // Solve for transform_signs and we get the following equation
+        let transform_signs = reference_signs_before.permute(axis_perm) * reference_signs_now;
+
+        // Now we apply the transformation to every piece and arrive at the permutation taking pieces to their new solved positions
         let piece_perm = Permutation::from_array(
-            solved
-                .pieces
-                .map(|piece| Piece {
-                    faces: piece.faces * reference_signs * solved_reference_signs,
-                })
-                .map(|piece| piece.current_location().index())
-                .0,
-        );
+            Permutation::IDENTITY
+                .into_inner()
+                .map(|i| PieceLocation::from_index(i))
+                .map(|piece_loc| PieceLocation(piece_loc.0.permute(axis_perm) * transform_signs))
+                .map(|piece_loc| piece_loc.index()),
+        )
+        .inverse();
 
+        // Apply this permutation to the pieces to put them in their correct slots
         self.pieces = self.pieces.permute(piece_perm);
 
         self

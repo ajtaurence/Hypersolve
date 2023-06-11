@@ -6,12 +6,11 @@ use crate::{
     groups::{Identity, K4},
     math,
     phases::{Phase, Phase1, Phase2, Phase3},
-    prune::{
-        gen_pruning_table, ArchivedPruningTable, ArrayPruningTable, ExactOrBound,
-        HashMapPruningTable,
-    },
+    prune::{ArchivedPruningTable, PruningTable},
 };
 use rayon::prelude::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
+use rkyv::Archive;
+use std::hash::Hash;
 
 pub const N_K4_COORD_STATES: u32 = 4_u32.pow(15);
 pub const N_C3_COORD_STATES: u32 = 3_u32.pow(14);
@@ -49,7 +48,7 @@ fn generate_move_axis_table() {
 }
 
 #[cfg(feature = "gen-const-data")]
-fn generate_move_axis_table() -> Box<[Axis; Phase1::N_MOVES]> {
+fn gen_move_axis_table() -> Box<[Axis; Phase1::N_MOVES]> {
     use crate::cubie_cube::HYPERSOLVE_TWISTS;
     use itertools::Itertools;
     HYPERSOLVE_TWISTS
@@ -137,41 +136,38 @@ pub trait Node: Identity + PartialEq + Copy + From<CubieCube> {
     const N_STATES: usize;
 
     type Phase: Phase;
+    type Index: Into<u64> + Archive<Archived = Self::Index> + Hash + std::cmp::Eq;
 
     /// Returns the index of the node
-    fn get_index(&self) -> u64;
+    fn get_index(&self) -> Self::Index;
 
     /// Returns a node from an index
     fn from_index(index: u64, last_move: Option<Move>) -> Self;
 
-    /// Returns a node from an index
+    /// Returns the last move applied to the node
     fn last_move(&self) -> Option<Move>;
+
+    /// Returns the axis of the last move applied to the node
+    fn last_axis(&self) -> Option<Axis> {
+        self.last_move().map(|m| m.axis())
+    }
 
     /// Gets the lower bound on the number of moves requied to reach the goal node from this node
     fn get_depth_bound(&self) -> u8;
-
-    /// Gets the depth and returns whether the depth is exact or bounded
-    fn get_depth_exact_or_bound(&self) -> ExactOrBound<u8> {
-        let depth = self.get_depth_bound();
-        match depth < self.get_depth_bound() {
-            true => ExactOrBound::Exact(depth),
-            false => ExactOrBound::LowerBound(depth),
-        }
-    }
 
     /// Applies the given move to the node
     fn apply_move(self, move_index: Move) -> Self;
 
     /// Returns a vector of the nodes connected to this node.
     /// Omits nodes obtained by redundant moves (moves with the same axis as the last move's axis).
-    fn connected(&self) -> NodeIterator<Self> {
-        NodeIterator::new(*self)
+    fn connected(&self) -> NodeAxisFilterIterator<Self> {
+        NodeAxisFilterIterator::new(*self)
     }
 
     /// Returns a vector of the nodes connected to this node.
     /// Gives priority to the nodes obtained through moves with the same axis as the last move's axis.
-    fn connected_axis_priority(&self) -> Vec<Self> {
-        todo!()
+    fn connected_axis_priority(&self) -> NodeAxisPriorityIterator<Self> {
+        NodeAxisPriorityIterator::new(*self)
     }
 
     /// Returns whether the node is the goal node
@@ -220,9 +216,10 @@ impl Identity for Phase1Node {
 impl Node for Phase1Node {
     const N_STATES: usize = N_K4_COORD_STATES as usize;
     type Phase = Phase1;
+    type Index = u32;
 
-    fn get_index(&self) -> u64 {
-        self.orientation.k4_coord() as u64
+    fn get_index(&self) -> u32 {
+        self.orientation.k4_coord()
     }
 
     fn from_index(index: u64, last_move: Option<Move>) -> Self {
@@ -246,9 +243,9 @@ impl Node for Phase1Node {
     }
 
     fn get_depth_bound(&self) -> u8 {
-        load_or_generate_data!(static PHASE1_PRUNING_TABLE: HashMapPruningTable<Phase1> = gen_pruning_table::<HashMapPruningTable<_> ,Phase1>(5), "phase1.prun");
+        load_or_generate_data!(static PHASE1_PRUNING_TABLE: <Phase1 as Phase>::PruningTable = <Phase1 as Phase>::PruningTable::generate(Phase1::PRUNING_DEPTH), "phase1.prun");
 
-        PHASE1_PRUNING_TABLE.get_depth(*self)
+        PHASE1_PRUNING_TABLE.get_depth_bound(*self)
     }
 }
 
@@ -266,7 +263,7 @@ impl From<CubieCube> for Phase1Node {
 pub struct Phase2Node {
     pub c3_coord: u32,
     pub io_coord: u16,
-    last_move: Option<Move>,
+    pub last_move: Option<Move>,
 }
 
 impl PartialEq for Phase2Node {
@@ -286,6 +283,7 @@ impl Identity for Phase2Node {
 impl Node for Phase2Node {
     const N_STATES: usize = N_C3_COORD_STATES as usize * N_IO_COORD_STATES as usize;
     type Phase = Phase2;
+    type Index = u64;
 
     fn get_index(&self) -> u64 {
         (self.io_coord as u64) * (N_C3_COORD_STATES as u64) + (self.c3_coord as u64)
@@ -316,9 +314,9 @@ impl Node for Phase2Node {
     }
 
     fn get_depth_bound(&self) -> u8 {
-        load_or_generate_data!(static PHASE2_PRUNING_TABLE: HashMapPruningTable<Phase2> = gen_pruning_table::<HashMapPruningTable<_> ,Phase2>(6), "phase2.prun");
+        load_or_generate_data!(static PHASE2_PRUNING_TABLE: <Phase2 as Phase>::PruningTable = <Phase2 as Phase>::PruningTable::generate(Phase2::PRUNING_DEPTH), "phase2.prun");
 
-        PHASE2_PRUNING_TABLE.get_depth(*self)
+        PHASE2_PRUNING_TABLE.get_depth_bound(*self)
     }
 }
 
@@ -337,7 +335,7 @@ impl From<CubieCube> for Phase2Node {
 pub struct Phase3Node {
     pub i_coord: u16,
     pub o_coord: u16,
-    last_move: Option<Move>,
+    pub last_move: Option<Move>,
 }
 
 impl PartialEq for Phase3Node {
@@ -357,10 +355,11 @@ impl Identity for Phase3Node {
 impl Node for Phase3Node {
     const N_STATES: usize = N_I_COORD_STATES as usize * N_O_COORD_STATES as usize / 2;
     type Phase = Phase3;
+    type Index = u32;
 
-    fn get_index(&self) -> u64 {
-        self.o_coord as u64 * (N_I_COORD_STATES / 2) as u64
-            + (self.i_coord % (N_I_COORD_STATES / 2)) as u64
+    fn get_index(&self) -> u32 {
+        self.o_coord as u32 * (N_I_COORD_STATES / 2) as u32
+            + (self.i_coord as u32 % (N_I_COORD_STATES / 2) as u32)
     }
 
     fn from_index(index: u64, last_move: Option<Move>) -> Self {
@@ -392,9 +391,9 @@ impl Node for Phase3Node {
     }
 
     fn get_depth_bound(&self) -> u8 {
-        load_or_generate_data!(static PHASE3_PRUNING_TABLE: ArrayPruningTable<Phase3> = gen_pruning_table::<ArrayPruningTable<_> ,Phase3>(Phase3::MAX_DEPTH), "phase3.prun");
+        load_or_generate_data!(static PHASE3_PRUNING_TABLE: <Phase3 as Phase>::PruningTable = <Phase3 as Phase>::PruningTable::generate(Phase3::PRUNING_DEPTH), "phase3.prun");
 
-        PHASE3_PRUNING_TABLE.get_depth(*self)
+        PHASE3_PRUNING_TABLE.get_depth_bound(*self)
     }
 }
 

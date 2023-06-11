@@ -6,13 +6,12 @@ use super::*;
 use crate::{
     groups::A4,
     node_cube::{Node, Phase1Node, Phase2Node, Phase3Node},
-    phases::{Phase, Phase1, Phase2, Phase3},
     piece_cube::puzzle::PieceCube,
 };
 
 /// Total number of cube states
 pub const N_CUBE_STATES: u128 =
-    Phase1::N_STATES as u128 * Phase2::N_STATES as u128 * Phase3::N_STATES as u128;
+    Phase1Node::N_STATES as u128 * Phase2Node::N_STATES as u128 * Phase3Node::N_STATES as u128;
 
 /// A cube representation for computing moves quickly as long as they don't affect the LDBO piece
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
@@ -42,8 +41,8 @@ impl CubieCube {
         let phase2_index = Phase2Node::from(self).get_index() as u128;
         let phase3_index = Phase3Node::from(self).get_index() as u128;
 
-        phase1_index * Phase2::N_STATES as u128 * Phase3::N_STATES as u128
-            + phase2_index * Phase3::N_STATES as u128
+        phase1_index * Phase2Node::N_STATES as u128 * Phase3Node::N_STATES as u128
+            + phase2_index * Phase3Node::N_STATES as u128
             + phase3_index
     }
 
@@ -53,11 +52,13 @@ impl CubieCube {
             return Err("Invalid cube state index".to_owned());
         }
 
-        let phase3_node = Phase3Node::from_index((index % Phase3::N_STATES as u128) as u64, None);
-        index /= Phase3::N_STATES as u128;
+        let phase3_node =
+            Phase3Node::from_index((index % Phase3Node::N_STATES as u128) as u64, None);
+        index /= Phase3Node::N_STATES as u128;
 
-        let phase2_node = Phase2Node::from_index((index % Phase2::N_STATES as u128) as u64, None);
-        index /= Phase2::N_STATES as u128;
+        let phase2_node =
+            Phase2Node::from_index((index % Phase2Node::N_STATES as u128) as u64, None);
+        index /= Phase2Node::N_STATES as u128;
 
         let phase1_node = Phase1Node::from_index(index as u64, None);
 

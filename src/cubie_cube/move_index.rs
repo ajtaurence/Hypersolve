@@ -1,22 +1,9 @@
-use super::*;
-
-use crate::{common::Axis, node_cube::MOVE_AXIS, piece_cube::Twist};
-use itertools::Itertools;
+use crate::{common::Axis, node_cube::MOVE_AXIS, phases::Phase};
+use std::marker::PhantomData;
 
 /// Hypersolve move index
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Move(pub u8);
-
-impl TryFrom<Twist> for Move {
-    type Error = String;
-    fn try_from(value: Twist) -> Result<Self, Self::Error> {
-        HYPERSOLVE_TWISTS
-            .iter()
-            .find_position(|&&twist| twist == value)
-            .map(|val| Move(val.0 as u8))
-            .ok_or("twist affects LDBO piece".to_owned())
-    }
-}
 
 impl std::ops::Deref for Move {
     type Target = u8;
@@ -75,5 +62,69 @@ impl Iterator for MoveIterator {
     fn size_hint(&self) -> (usize, Option<usize>) {
         let remaining = self.moves.end.as_usize() - self.current_move.as_usize();
         (remaining, Some(remaining))
+    }
+}
+
+const_data!(
+    AXIS_SORTED_MOVES: [[[Move; 92]; 4]; 3] = {
+        use crate::phases::{Phase1, Phase2, Phase3};
+        use itertools::Itertools;
+        use strum::IntoEnumIterator;
+
+        // indexed by [phase][axis][move]
+        let mut result = [[[Move(0); 92]; 4]; 3];
+
+        for phase in 0..3 {
+            let n_moves = match phase {
+                0 => Phase1::N_MOVES,
+                1 => Phase2::N_MOVES,
+                2 => Phase3::N_MOVES,
+                _ => unreachable!(),
+            } as u8;
+
+            for axis in Axis::iter() {
+                for (i, value) in MoveIterator::new(Move(0)..Move(n_moves))
+                    .sorted_by_key(|m| (m.axis() as i8 - axis as i8).abs())
+                    .enumerate()
+                {
+                    result[phase][axis as usize][i] = value;
+                }
+            }
+        }
+
+        Box::new(result)
+    }
+);
+
+#[cfg(feature = "gen-const-data")]
+#[test]
+fn generate_axis_sorted_moves() {
+    let _ = *AXIS_SORTED_MOVES;
+}
+
+/// An iterator over a set of moves that don't contain moves along a certain axis
+pub struct AxisPriorityMoveIterator<P: Phase> {
+    axis_sorted_moves: std::slice::Iter<'static, Move>,
+    phantom: PhantomData<P>,
+}
+
+impl<P: Phase> AxisPriorityMoveIterator<P> {
+    pub fn new(axis: Axis) -> Self {
+        Self {
+            axis_sorted_moves: AXIS_SORTED_MOVES[P::PHASE_INDEX][axis as usize][..P::N_MOVES]
+                .into_iter(),
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<P: Phase> Iterator for AxisPriorityMoveIterator<P> {
+    type Item = Move;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.axis_sorted_moves.next().copied()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.axis_sorted_moves.size_hint()
     }
 }

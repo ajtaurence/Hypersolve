@@ -4,7 +4,7 @@ use std::{
 };
 
 use crate::{
-    common::{Axis, Face, Parity, Sign, Vector4},
+    common::{Axis, Face, Parity, Sign, Vector, Vector4},
     groups::Permutation,
 };
 
@@ -138,12 +138,7 @@ impl Piece {
 
 /// Describes locations that pieces can be in rather than pieces themselves
 #[derive(Copy, Clone, PartialEq, Eq, Default)]
-pub struct PieceLocation {
-    x: Sign,
-    y: Sign,
-    z: Sign,
-    w: Sign,
-}
+pub struct PieceLocation(pub Vector4<Sign>);
 
 impl From<Piece> for PieceLocation {
     fn from(piece: Piece) -> Self {
@@ -174,10 +169,10 @@ impl Index<Axis> for PieceLocation {
     type Output = Sign;
     fn index(&self, axis: Axis) -> &Self::Output {
         match axis {
-            Axis::X => &self.x,
-            Axis::Y => &self.y,
-            Axis::Z => &self.z,
-            Axis::W => &self.w,
+            Axis::X => &self.0[0],
+            Axis::Y => &self.0[1],
+            Axis::Z => &self.0[2],
+            Axis::W => &self.0[3],
         }
     }
 }
@@ -185,10 +180,10 @@ impl Index<Axis> for PieceLocation {
 impl IndexMut<Axis> for PieceLocation {
     fn index_mut(&mut self, axis: Axis) -> &mut Self::Output {
         match axis {
-            Axis::X => &mut self.x,
-            Axis::Y => &mut self.y,
-            Axis::Z => &mut self.z,
-            Axis::W => &mut self.w,
+            Axis::X => &mut self.0[0],
+            Axis::Y => &mut self.0[1],
+            Axis::Z => &mut self.0[2],
+            Axis::W => &mut self.0[3],
         }
     }
 }
@@ -197,21 +192,21 @@ impl PieceLocation {
     /// Returns the piece that is solved in this location
     pub const fn solved_piece(&self) -> Piece {
         Piece::new(Vector4::from_array([
-            Face::from_axis_sign(Axis::X, self.x),
-            Face::from_axis_sign(Axis::Y, self.y),
-            Face::from_axis_sign(Axis::Z, self.z),
-            Face::from_axis_sign(Axis::W, self.w),
+            Face::from_axis_sign(Axis::X, self.0 .0[0]),
+            Face::from_axis_sign(Axis::Y, self.0 .0[1]),
+            Face::from_axis_sign(Axis::Z, self.0 .0[2]),
+            Face::from_axis_sign(Axis::W, self.0 .0[3]),
         ]))
     }
 
     /// Returns a piece location from signs along each axis
     pub const fn from_signs(x: Sign, y: Sign, z: Sign, w: Sign) -> PieceLocation {
-        PieceLocation { x, y, z, w }
+        PieceLocation(Vector::<_, 4>([x, y, z, w]))
     }
 
     /// Gets the parity of this piece location
     pub fn parity(&self) -> Parity {
-        match self.x * self.y * self.z * self.w {
+        match self.0[0] * self.0[1] * self.0[2] * self.0[3] {
             Sign::Pos => Parity::Even,
             Sign::Neg => Parity::Odd,
         }
@@ -225,10 +220,10 @@ impl PieceLocation {
     /// Gets the index of this location
     pub const fn index(self) -> usize {
         // Toggle the w bit to make face I get indexed before O
-        self.x.to_binary() * 2_usize.pow(0)
-            + self.y.to_binary() * 2_usize.pow(1)
-            + self.z.to_binary() * 2_usize.pow(2)
-            + (self.w.to_binary() ^ 1) * 2_usize.pow(3)
+        self.0 .0[0].to_binary() * 2_usize.pow(0)
+            + self.0 .0[1].to_binary() * 2_usize.pow(1)
+            + self.0 .0[2].to_binary() * 2_usize.pow(2)
+            + (self.0 .0[3].to_binary() ^ 1) * 2_usize.pow(3)
     }
 
     /// Gets the location from this index

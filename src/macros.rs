@@ -35,10 +35,6 @@ where
         // generate the object
         let bytes = rkyv::to_bytes::<_, 0>(&f()).expect("unable to serialize object to bytes");
 
-        if is_terminal {
-            println!("Saving to file...");
-        }
-
         // write the bytes to the file
         let mut file =
             std::fs::File::create(filepath.as_path()).expect("unable to create data file");
@@ -46,7 +42,7 @@ where
             .expect("unable to write data file");
 
         if is_terminal {
-            println!("Finished");
+            println!("Finished {}", filename);
         }
 
         bytes.to_vec()

@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand, ValueEnum};
-use hypersolve::{piece_cube::{Twist, puzzle::PieceCube}, solve::{fast_solve, find_scramble}, hex_string::HexString, cubie_cube::{CubieCube}};
+use hypersolve::{piece_cube::{Twist, puzzle::PieceCube, TwistSequence}, solve::{fast_solve, find_scramble}, hex_string::HexString, cubie_cube::{CubieCube}};
 use colored::Colorize;
 
 #[derive(Parser)]
@@ -66,9 +66,9 @@ enum SolveMode {
 
 #[derive(Clone, Copy, ValueEnum)]
 enum SimplifyMode {
-    /// Applies trivial simplifications such as combining moves where possible
+    /// Applies trivial simplifications such as combining moves where possible and removing cube rotations
     Trivial,
-    /// Searches for equivalent but shorter move sequences
+    /// Searches for any equivalent but shorter move sequences
     NonTrivial,
 }
 
@@ -94,7 +94,7 @@ fn solve(moves: Vec<Twist>, mode: SolveMode) {
         SolveMode::Fast => {
             let solutions = fast_solve(PieceCube::solved().twists(moves), None);
             while let Ok((solution, length)) = solutions.recv() {
-                println!("[{}]", format!("STM {}", length).yellow().underline());
+                println!("[{}]", format!("{} STM", length).yellow().underline());
                 println!("{}", solution);
             }            
         },
@@ -116,17 +116,15 @@ fn scramble(key: Option<HexString<16>>) {
 
 /// Function called on verify command
 fn verify(key: HexString<16>, scramble: Vec<Twist>) {
-    // cube index from key
-    let key_cube_index = key.to_cube_index();
+    let cube = CubieCube::from_index(key.to_cube_index()).unwrap();
 
-    // cube index from scramble
-    let scramble_cube_index = CubieCube::from(PieceCube::solved().twists(scramble)).get_index();
+    let expected_scramble = find_scramble(cube);
 
-    if key_cube_index == scramble_cube_index {
+    if expected_scramble.to_string() == TwistSequence(scramble).to_string() {
         println!("{}", "Valid".green())
     } else {
         println!("{}", "Invalid".red());
-    }   
+    }
 }
 
 /// Function called on simplify command
