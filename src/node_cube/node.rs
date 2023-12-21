@@ -99,9 +99,16 @@ fn gen_i_move_table() -> Box<[[u16; Phase3::N_MOVES]; N_I_COORD_STATES as usize]
     let mut table = vec![[0_u16; Phase3::N_MOVES]; N_I_COORD_STATES as usize];
 
     table.par_iter_mut().enumerate().for_each(|(i, entry)| {
+        // Ensure the total permutation parity of the cube remains valid
+        let o_coord = if i < N_I_COORD_STATES as usize / 2 {
+            0
+        } else {
+            N_O_COORD_STATES / 2
+        };
+
         let cube = CubieCube {
             orientation: Orientation::solved(),
-            permutation: Permutation::from_coords(0, i as u16, 0),
+            permutation: Permutation::from_coords(0, i as u16, o_coord),
         };
 
         for j in 0..(Phase3::N_MOVES) {
@@ -117,9 +124,16 @@ fn gen_o_move_table() -> Box<[[u16; Phase3::N_MOVES]; N_O_COORD_STATES as usize]
     let mut table = vec![[0_u16; Phase3::N_MOVES]; N_O_COORD_STATES as usize];
 
     table.par_iter_mut().enumerate().for_each(|(i, entry)| {
+        // Ensure the total permutation parity of the cube remains valid
+        let i_coord = if i < N_O_COORD_STATES as usize / 2 {
+            0
+        } else {
+            N_I_COORD_STATES / 2
+        };
+
         let cube = CubieCube {
             orientation: Orientation::solved(),
-            permutation: Permutation::from_coords(0, 0, i as u16),
+            permutation: Permutation::from_coords(0, i_coord, i as u16),
         };
 
         for j in 0..(Phase3::N_MOVES) {
@@ -425,7 +439,7 @@ mod tests {
 
     #[test]
     fn test_permutation_to_from_i_coord() {
-        for i in 0..N_I_COORD_STATES {
+        for i in 0..N_I_COORD_STATES / 2 {
             let permutation = Permutation::from_coords(0, i, 0);
             assert_eq!(permutation.i_coord(), i)
         }
