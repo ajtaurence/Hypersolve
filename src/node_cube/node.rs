@@ -158,16 +158,9 @@ pub trait Node: Identity + PartialEq + Copy + From<CubieCube> {
     /// Applies the given move to the node
     fn apply_move(self, move_index: Move) -> Self;
 
-    /// Returns a vector of the nodes connected to this node.
-    /// Omits nodes obtained by redundant moves (moves with the same axis as the last move's axis).
-    fn connected(&self) -> NodeAxisFilterIterator<Self> {
-        NodeAxisFilterIterator::new(*self)
-    }
-
-    /// Returns a vector of the nodes connected to this node.
-    /// Gives priority to the nodes obtained through moves with the same axis as the last move's axis.
-    fn connected_axis_priority(&self) -> NodeAxisPriorityIterator<Self> {
-        NodeAxisPriorityIterator::new(*self)
+    /// Returns a vector of the nodes connected to this node using the given connected node iterator
+    fn connected<I: ConnectedNodeIterator<Self>>(&self) -> I {
+        I::new(*self)
     }
 
     /// Returns whether the node is the goal node
@@ -365,6 +358,8 @@ impl Node for Phase3Node {
     fn from_index(index: u64, last_move: Option<Move>) -> Self {
         let o_coord = (index / (N_I_COORD_STATES / 2) as u64) as u16;
         let mut i_coord = (index % (N_I_COORD_STATES / 2) as u64) as u16;
+
+        // if O piece permutation is odd then the I piece permutation must also be odd
         if o_coord >= (N_O_COORD_STATES / 2) {
             i_coord += N_I_COORD_STATES / 2;
         };

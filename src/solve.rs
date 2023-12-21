@@ -1,7 +1,10 @@
 use crate::{
     common::Face,
     cubie_cube::{CubieCube, Move},
-    node_cube::{Node, Phase1Node, Phase2Node, Phase3Node},
+    node_cube::{
+        ConnectedNodeIterator, Node, NodeAxisFilterIterator, NodeAxisPriorityIterator, Phase1Node,
+        Phase2Node, Phase3Node,
+    },
     piece_cube::{puzzle::PieceCube, LayerEnum, Twist, TwistDirectionEnum, TwistSequence},
 };
 use std::{
@@ -13,44 +16,85 @@ use std::{
     thread,
 };
 
-/// Returns an iterator over all solutions of the specified length for the given node
-fn phase_solutions_at_depth<N: Node + 'static>(
+struct FixedLengthPhaseSolutionIterator<N: Node, I: ConnectedNodeIterator<N>> {
     node: N,
     sol_length: u32,
-    sequence: Vec<Move>,
-    //TODO: Rewrite this function using static dispatch
-) -> Box<dyn Iterator<Item = Vec<Move>>> {
-    let is_first_move = sequence.len() == 0;
+    node_iter: I,
+    sub_sol_iter: Option<Box<FixedLengthPhaseSolutionIterator<N, NodeAxisFilterIterator<N>>>>,
+    last_move: Option<Move>,
+}
 
-    // If this is the goal node and the solution is the correct length then return the solution
-    if node.is_goal() && sequence.len() as u32 == sol_length {
-        return Box::new(std::iter::once(sequence.clone()));
+impl<N: Node, I: ConnectedNodeIterator<N>> FixedLengthPhaseSolutionIterator<N, I> {
+    fn new(node: N, sol_length: u32) -> Self {
+        let mut node_iter: I = node.connected();
+
+        let mut last_move = None;
+
+        let sub_sol_iter = if sol_length == 0 {
+            None
+        } else {
+            node_iter.next().map(|n| {
+                last_move = n.last_move();
+                Box::new(FixedLengthPhaseSolutionIterator::new(n, sol_length - 1))
+            })
+        };
+
+        Self {
+            node,
+            sol_length,
+            node_iter,
+            sub_sol_iter,
+            last_move,
+        }
     }
+}
 
-    // Lower bound on the number of moves required to solve the node
-    let min_dist = sequence.len() as u8 + node.get_depth_bound();
+impl<N: Node, I: ConnectedNodeIterator<N>> Iterator for FixedLengthPhaseSolutionIterator<N, I> {
+    type Item = Vec<Move>;
 
-    // If the minimum distance is more than the maximum depth then
-    // return none since there is no reachable solution
-    if min_dist as u32 > sol_length {
-        return Box::new(std::iter::empty());
-    }
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.node.get_depth_bound() as u32 > self.sol_length {
+            return None;
+        }
 
-    // For every connected node, try to find solutions from there
-    if is_first_move {
-        Box::new(node.connected_axis_priority().flat_map(move |new_node| {
-            let mut new_sequence = sequence.clone();
-            new_sequence.push(new_node.last_move().unwrap());
+        if let Some(ref mut sub_sol_iter) = self.sub_sol_iter {
+            // There is a sub_sol_iter
 
-            phase_solutions_at_depth(new_node, sol_length, new_sequence)
-        }))
-    } else {
-        Box::new(node.connected().flat_map(move |new_node| {
-            let mut new_sequence = sequence.clone();
-            new_sequence.push(new_node.last_move().unwrap());
+            if let Some(sub_sol) = sub_sol_iter.next() {
+                // We found a sub solution
 
-            phase_solutions_at_depth(new_node, sol_length, new_sequence)
-        }))
+                // Add the last move to the solution and return it
+                return Some([vec![self.last_move.unwrap()], sub_sol].concat());
+            } else {
+                // There are no more solutions in this sub iterator
+
+                // Get the next node
+                if let Some(next_node) = self.node_iter.next() {
+                    self.last_move = next_node.last_move();
+
+                    // create a new subsolution
+                    self.sub_sol_iter = Some(Box::new(FixedLengthPhaseSolutionIterator::new(
+                        next_node,
+                        self.sol_length - 1,
+                    )));
+
+                    // Recursively call the function
+                    return self.next();
+                } else {
+                    // There is no next node, we are done
+                    return None;
+                }
+            }
+        } else {
+            // There is no sub_sol_iter because the solution length is zero
+
+            if self.node.is_goal() {
+                // Return empty solution if already solved
+                return Some(Vec::new());
+            } else {
+                return None;
+            }
+        }
     }
 }
 
@@ -60,7 +104,9 @@ fn phase_solutions<N: Node + 'static>(node: N) -> impl Iterator<Item = Vec<Move>
     let min_depth = node.get_depth_bound();
 
     // start at the min depth and search longer solutions if needed
-    (min_depth as u32..).flat_map(move |i| phase_solutions_at_depth(node, i, Vec::new()))
+    (min_depth as u32..).flat_map(move |i| {
+        FixedLengthPhaseSolutionIterator::<N, NodeAxisPriorityIterator<N>>::new(node, i)
+    })
 }
 
 /// Solves the cube on this thread, sending solutions and solution lengths back via `solutions`
@@ -254,16 +300,20 @@ pub fn fast_solve(cube: PieceCube, max_sol_length: Option<u32>) -> Receiver<(Twi
 
 /// Finds a scramble that results in the given cube
 pub fn find_scramble(mut cube: CubieCube) -> TwistSequence {
+    // Find phase 1 solution
     let phase1_sol = phase_solutions(Phase1Node::from(cube)).next().unwrap();
 
+    // Apply phase 1 solution
     cube = cube.apply_moves(phase1_sol.iter());
 
+    // Find phase 2 solution
     let mut phase2_sol = phase_solutions(Phase2Node::from(cube)).next().unwrap();
 
+    // Apply phase 2 solution
     cube = cube.apply_moves(phase2_sol.iter());
 
-    // TODO: sometimes this function isn't able to find a phase 3 solution for some reason?
-    let mut phase3_sol = phase_solutions::<Phase3Node>(cube.into()).next().unwrap();
+    // Find phase 3 solution
+    let mut phase3_sol = phase_solutions(Phase3Node::from(cube)).next().unwrap();
 
     let mut sequence = phase1_sol;
     sequence.append(&mut phase2_sol);

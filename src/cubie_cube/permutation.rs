@@ -173,6 +173,7 @@ impl Permutation {
         let i_array = Self::coord_to_i_permutation(i_coord);
         let o_array = Self::coord_to_o_permutation(o_coord);
 
+        // Construct the total permutation array
         let mut i_index: usize = 0;
         let mut o_index: usize = 0;
         for i in 0..15 {
@@ -185,7 +186,19 @@ impl Permutation {
             }
         }
 
-        Permutation(map)
+        // Fix the total permutation parity by swapping the parity index of the I coordinate if needed
+        if crate::groups::Permutation::<15>::from_array(map.map(|i| i as usize))
+            .parity()
+            .is_odd()
+        {
+            Permutation::from_coords(
+                io_coord,
+                (i_coord + N_I_COORD_STATES / 2) % N_I_COORD_STATES,
+                o_coord,
+            )
+        } else {
+            Permutation(map)
+        }
     }
 
     /// Returns the IO permutation from a coordinate

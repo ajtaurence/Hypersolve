@@ -3,11 +3,21 @@ use super::*;
 use crate::cubie_cube::{AxisPriorityMoveIterator, MoveIterator};
 use crate::phases::Phase;
 
+pub trait ConnectedNodeIterator<N: Node>: Iterator<Item = N> {
+    fn new(node: N) -> Self;
+}
+
 /// An iterator over nodes connected to a given node by the available moves.
 /// Ignores moves on the same axis as the previous move.
 pub struct NodeAxisFilterIterator<N: Node> {
     node: N,
     move_iter: MoveIterator,
+}
+
+impl<N: Node> ConnectedNodeIterator<N> for NodeAxisFilterIterator<N> {
+    fn new(node: N) -> Self {
+        Self::new(node)
+    }
 }
 
 impl<N: Node> NodeAxisFilterIterator<N> {
@@ -37,6 +47,12 @@ impl<N: Node> Iterator for NodeAxisFilterIterator<N> {
 pub struct NodeAxisPriorityIterator<N: Node> {
     node: N,
     move_iter: AxisPriorityMoveIterator<N::Phase>,
+}
+
+impl<N: Node> ConnectedNodeIterator<N> for NodeAxisPriorityIterator<N> {
+    fn new(node: N) -> Self {
+        Self::new(node)
+    }
 }
 
 impl<N: Node> NodeAxisPriorityIterator<N> {

@@ -1,4 +1,4 @@
-use crate::node_cube::Node;
+use crate::node_cube::{Node, NodeAxisFilterIterator};
 use rkyv::{Archive, Deserialize, Serialize};
 use std::{
     collections::HashMap,
@@ -52,7 +52,7 @@ pub trait PruningTable<N: Node> {
 
         loop {
             if let Some(node) = queue.pop() {
-                for new_node in node.connected() {
+                for new_node in node.connected::<NodeAxisFilterIterator<N>>() {
                     if pruning_table.get_depth_bound(new_node) > queue.depth() {
                         pruning_table.set_depth(new_node, queue.depth());
                         if queue.depth < depth {
