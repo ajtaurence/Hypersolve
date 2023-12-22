@@ -9,7 +9,7 @@ use crate::{
     piece_cube::puzzle::PieceCube,
 };
 
-/// Total number of cube states
+/// Total number of 2^4 cube states
 pub const N_CUBE_STATES: u128 =
     Phase1Node::N_STATES as u128 * Phase2Node::N_STATES as u128 * Phase3Node::N_STATES as u128;
 

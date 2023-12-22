@@ -6,9 +6,9 @@ mod vector;
 mod index;
 mod parity;
 
-pub(crate) use axis::*;
-pub(crate) use face::*;
+pub use axis::*;
+pub use face::*;
 pub(crate) use index::*;
 pub(crate) use parity::*;
-pub(crate) use sign::*;
+pub use sign::*;
 pub(crate) use vector::*;

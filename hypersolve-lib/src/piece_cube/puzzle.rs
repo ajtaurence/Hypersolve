@@ -7,10 +7,10 @@ use crate::{
 use itertools::Itertools;
 use std::ops::{Index, IndexMut};
 
-/// High level representation of the cube, capable of computing any move but has slower performance
+/// Cube representation capable of computing any move
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct PieceCube {
-    pub pieces: Vector<Piece, 16>,
+    pub(crate) pieces: Vector<Piece, 16>,
 }
 
 impl Default for PieceCube {
@@ -43,6 +43,7 @@ impl PieceCube {
         PieceCube { pieces }
     }
 
+    /// Returns the solved cube
     pub fn solved() -> Self {
         PieceCube::new(
             (0..16)
@@ -53,6 +54,12 @@ impl PieceCube {
         )
     }
 
+    /// Returns whether the cube is solved, allowing cube
+    pub fn is_solved(&self) -> bool {
+        self.reposition() == PieceCube::solved()
+    }
+
+    /// Applies the twist to this cube
     pub fn twist(mut self, twist: Twist) -> Self {
         for i in 0..16 {
             if self.pieces[i].is_affected_by_twist(twist) {
@@ -62,6 +69,7 @@ impl PieceCube {
         self
     }
 
+    /// Applies a sequence of twists to this cube rotations
     pub fn twists(mut self, twists: impl IntoIterator<Item = Twist>) -> Self {
         for twist in twists {
             self = self.twist(twist);
@@ -69,7 +77,12 @@ impl PieceCube {
         self
     }
 
-    pub fn pieces_except_last(self) -> [Piece; 15] {
+    /// Finds a scramble that results in this cube
+    pub fn find_scramble(self) -> TwistSequence {
+        crate::solve::find_scramble(self)
+    }
+
+    pub(crate) fn pieces_except_last(self) -> [Piece; 15] {
         self.pieces
             .into_iter()
             .take(15)
@@ -79,7 +92,7 @@ impl PieceCube {
     }
 
     /// Repositions the inner representation of the cube so the state is the same but the LDBO piece is solved
-    pub fn reposition(mut self) -> Self {
+    pub(crate) fn reposition(mut self) -> Self {
         // get the reference sticker
         let (reference_index, &reference_piece) = self
             .pieces
@@ -125,5 +138,20 @@ impl PieceCube {
         self.pieces = self.pieces.permute(piece_perm);
 
         self
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_is_solved() {
+        for twist in Twist::iter_all_twists() {
+            assert_eq!(
+                PieceCube::solved().twist(twist).is_solved(),
+                twist.is_cube_rotation()
+            )
+        }
     }
 }

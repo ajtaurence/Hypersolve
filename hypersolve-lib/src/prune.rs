@@ -28,7 +28,7 @@ pub trait PruningTable<N: Node> {
     /// Anything that needs to be done to the pruning table after it is done being generated
     fn finalize(&mut self);
 
-    // Generates the pruning table to the desired depth
+    /// Generates the pruning table to the desired depth
     fn generate(depth: u8) -> Self
     where
         Self: Sized,

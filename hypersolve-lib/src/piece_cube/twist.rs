@@ -8,6 +8,7 @@ use once_cell::sync::Lazy;
 use std::{collections::HashMap, error::Error, fmt::Display, str::FromStr};
 use strum::{EnumIter, IntoEnumIterator};
 
+/// Errors for parsing MC4D twist format
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TwistParseError {
     MissingTwistId,
@@ -42,6 +43,7 @@ impl std::fmt::Display for TwistParseError {
     }
 }
 
+/// Enum representing the layer grabbed when twisting
 #[derive(Debug, Copy, Clone, PartialEq, Eq, TryFromPrimitive)]
 #[repr(u8)]
 pub enum LayerEnum {
@@ -78,23 +80,8 @@ impl FromStr for Twist {
 }
 
 impl Twist {
-    pub const fn axis(&self) -> Axis {
-        self.face.axis()
-    }
-
-    pub const fn sign(&self) -> Sign {
-        self.face.sign()
-    }
-
-    pub fn inverse(&self) -> Self {
-        Self::new(self.face, self.direction.rev(), self.layer)
-    }
-
-    pub fn is_cube_rotation(&self) -> bool {
-        self.layer == LayerEnum::Both
-    }
-
-    pub(crate) const fn new(face: Face, direction: TwistDirectionEnum, layer: LayerEnum) -> Twist {
+    /// Creates a new twist
+    pub const fn new(face: Face, direction: TwistDirectionEnum, layer: LayerEnum) -> Twist {
         Twist {
             face,
             direction,
@@ -102,6 +89,32 @@ impl Twist {
         }
     }
 
+    /// Returns the face this twist is on
+    pub const fn face(&self) -> Face {
+        self.face
+    }
+
+    /// Returns the axis this twist is on
+    pub const fn axis(&self) -> Axis {
+        self.face.axis()
+    }
+
+    /// Returns the sign of the axis this twist is on
+    pub const fn sign(&self) -> Sign {
+        self.face.sign()
+    }
+
+    /// Returns the inverse of this twist
+    pub fn inverse(&self) -> Self {
+        Self::new(self.face, self.direction.rev(), self.layer)
+    }
+
+    /// Returns whether this twist is a cube rotation
+    pub fn is_cube_rotation(&self) -> bool {
+        self.layer == LayerEnum::Both
+    }
+
+    /// Creates a twist from its MC4D string
     pub fn from_mc4d_twist_string(s: &str) -> Result<Twist, TwistParseError> {
         use TwistParseError::*;
 
@@ -155,6 +168,7 @@ impl Twist {
         Ok(Twist::new(face, direction, layer))
     }
 
+    /// Returns the MC4D string for this twist
     pub fn to_mc4d_string(mut self: Twist) -> String {
         static MC4D_TWIST_IDS: Lazy<HashMap<(Face, TwistDirectionEnum), usize>> = Lazy::new(|| {
             Twist::mc4d_twist_order()
@@ -232,14 +246,14 @@ impl Twist {
         )
     }
 
+    /// Iterates over all possible twists
     pub fn iter_all_twists() -> impl Iterator<Item = Twist> {
         itertools::iproduct!(Face::iter(), TwistDirectionEnum::iter())
             .map(|(face, direction)| Twist::new(face, direction, LayerEnum::This))
     }
 }
 
-// From Hyperspeedcube
-// https://github.com/HactarCE/Hyperspeedcube/blob/645bbd3e88eec62d25a22c835a7174a0b2f44f99/src/piecepuzzle/common.rs
+/// 3D Twist directions from [Hyperspeedcube](https://github.com/HactarCE/Hyperspeedcube/blob/9ef4d7f7c4a273b4ffb723e65e4539593c156322/src/puzzle/rubiks_4d.rs#L967C1-L1039C2)
 #[derive(
     FromPrimitive,
     Debug,
@@ -430,6 +444,7 @@ impl TwistDirectionEnum {
     }
 }
 
+/// Wrapper on a vector of twists
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TwistSequence(pub Vec<Twist>);
 
@@ -440,6 +455,7 @@ impl From<Vec<Move>> for TwistSequence {
 }
 
 impl TwistSequence {
+    /// Returns the inverse of this twist sequence
     pub fn inverse(&self) -> Self {
         self.0.iter().rev().map(|twist| twist.inverse()).collect()
     }

@@ -146,6 +146,7 @@ impl std::ops::Neg for Face {
 }
 
 impl Face {
+    /// The axis this face is on
     pub const fn axis(self) -> Axis {
         use Face::*;
         match self {
@@ -156,6 +157,7 @@ impl Face {
         }
     }
 
+    /// The sign of the axis this face is on
     pub const fn sign(self) -> Sign {
         use Face::*;
         match self {
@@ -164,6 +166,7 @@ impl Face {
         }
     }
 
+    /// Get the face from an axis and the sign of the axis
     pub const fn from_axis_sign(axis: Axis, sign: Sign) -> Self {
         use Face::*;
         match (axis, sign) {
@@ -178,6 +181,7 @@ impl Face {
         }
     }
 
+    /// Get the opposite face
     pub const fn opposite(self) -> Face {
         use Face::*;
         match self {
@@ -192,6 +196,7 @@ impl Face {
         }
     }
 
+    /// Get the uppercase symbol for the face
     pub const fn symbol_upper_str(self) -> &'static str {
         match self {
             Face::R => "R",
@@ -205,7 +210,7 @@ impl Face {
         }
     }
 
-    pub fn basis_faces(self) -> [Face; 3] {
+    pub(crate) fn basis_faces(self) -> [Face; 3] {
         use Axis::*;
 
         let w = match self.sign() {
@@ -220,7 +225,7 @@ impl Face {
         ]
     }
 
-    pub fn basis(self) -> [Vector4<i32>; 3] {
+    pub(crate) fn basis(self) -> [Vector4<i32>; 3] {
         self.basis_faces().map(|f| f.into())
     }
 }

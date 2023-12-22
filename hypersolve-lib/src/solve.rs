@@ -307,7 +307,9 @@ pub fn fast_solve(
 }
 
 /// Finds a scramble that results in the given cube
-pub fn find_scramble(mut cube: CubieCube) -> TwistSequence {
+pub(crate) fn find_scramble(cube: impl Into<CubieCube>) -> TwistSequence {
+    let mut cube: CubieCube = cube.into();
+
     // Find phase 1 solution
     let phase1_sol = phase_solutions(Phase1Node::from(cube)).next().unwrap();
 
