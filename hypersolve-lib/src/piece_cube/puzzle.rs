@@ -115,7 +115,7 @@ impl PieceCube {
         let piece_perm = Permutation::from_array(
             Permutation::IDENTITY
                 .into_inner()
-                .map(|i| PieceLocation::from_index(i))
+                .map(PieceLocation::from_index)
                 .map(|piece_loc| PieceLocation(piece_loc.0.permute(axis_perm) * transform_signs))
                 .map(|piece_loc| piece_loc.index()),
         )

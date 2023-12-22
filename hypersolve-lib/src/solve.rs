@@ -1,3 +1,4 @@
+use super::*;
 use crate::{
     common::Face,
     cubie_cube::{CubieCube, Move},
@@ -5,15 +6,12 @@ use crate::{
         ConnectedNodeIterator, Node, NodeAxisFilterIterator, NodeAxisPriorityIterator, Phase1Node,
         Phase2Node, Phase3Node,
     },
-    piece_cube::{puzzle::PieceCube, LayerEnum, Twist, TwistDirectionEnum, TwistSequence},
+    piece_cube::{puzzle::PieceCube, LayerEnum, TwistDirectionEnum},
 };
-use std::{
-    sync::{
-        atomic::{AtomicU32, Ordering},
-        mpsc::{channel, Receiver, Sender},
-        Arc,
-    },
-    thread,
+use std::sync::{
+    atomic::{AtomicU32, Ordering},
+    mpsc::{channel, Receiver, Sender},
+    Arc,
 };
 
 struct FixedLengthPhaseSolutionIterator<N: Node, I: ConnectedNodeIterator<N>> {
@@ -22,6 +20,7 @@ struct FixedLengthPhaseSolutionIterator<N: Node, I: ConnectedNodeIterator<N>> {
     node_iter: I,
     sub_sol_iter: Option<Box<FixedLengthPhaseSolutionIterator<N, NodeAxisFilterIterator<N>>>>,
     last_move: Option<Move>,
+    is_done: bool,
 }
 
 impl<N: Node, I: ConnectedNodeIterator<N>> FixedLengthPhaseSolutionIterator<N, I> {
@@ -45,6 +44,7 @@ impl<N: Node, I: ConnectedNodeIterator<N>> FixedLengthPhaseSolutionIterator<N, I
             node_iter,
             sub_sol_iter,
             last_move,
+            is_done: false,
         }
     }
 }
@@ -53,7 +53,7 @@ impl<N: Node, I: ConnectedNodeIterator<N>> Iterator for FixedLengthPhaseSolution
     type Item = Vec<Move>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.node.get_depth_bound() as u32 > self.sol_length {
+        if self.node.get_depth_bound() as u32 > self.sol_length || self.is_done {
             return None;
         }
 
@@ -64,7 +64,7 @@ impl<N: Node, I: ConnectedNodeIterator<N>> Iterator for FixedLengthPhaseSolution
                 // We found a sub solution
 
                 // Add the last move to the solution and return it
-                return Some([vec![self.last_move.unwrap()], sub_sol].concat());
+                Some([vec![self.last_move.unwrap()], sub_sol].concat())
             } else {
                 // There are no more solutions in this sub iterator
 
@@ -79,10 +79,10 @@ impl<N: Node, I: ConnectedNodeIterator<N>> Iterator for FixedLengthPhaseSolution
                     )));
 
                     // Recursively call the function
-                    return self.next();
+                    self.next()
                 } else {
                     // There is no next node, we are done
-                    return None;
+                    None
                 }
             }
         } else {
@@ -90,9 +90,10 @@ impl<N: Node, I: ConnectedNodeIterator<N>> Iterator for FixedLengthPhaseSolution
 
             if self.node.is_goal() {
                 // Return empty solution if already solved
-                return Some(Vec::new());
+                self.is_done = true;
+                Some(Vec::new())
             } else {
-                return None;
+                None
             }
         }
     }
@@ -123,6 +124,8 @@ fn fast_solve_internal(
 
         // check if the solution will be longer than the shortest solution
         if phase1_sol_length >= shortest_sol_length.load(Ordering::Relaxed) {
+            // Set the solution length to zero so the other threads will stop
+            shortest_sol_length.store(0, Ordering::Relaxed);
             return;
         }
 
@@ -203,8 +206,13 @@ fn fast_solve_internal(
     }
 }
 
-/// Solves the given cube on multiple threads, sending solutions and solution lengths back as they are found
-pub fn fast_solve(cube: PieceCube, max_sol_length: Option<u32>) -> Receiver<(TwistSequence, u32)> {
+/// Solves the given scramble on multiple threads, sending solutions and solution lengths back as they are found
+pub fn fast_solve(
+    scramble: impl IntoIterator<Item = Twist>,
+    max_sol_length: Option<u32>,
+) -> Receiver<(TwistSequence, u32)> {
+    let cube = PieceCube::solved().twists(scramble);
+
     let length = Arc::new(AtomicU32::new(max_sol_length.unwrap_or(u32::MAX)));
 
     let (raw_sol_send, raw_sol_receive) = channel();
@@ -266,7 +274,7 @@ pub fn fast_solve(cube: PieceCube, max_sol_length: Option<u32>) -> Receiver<(Twi
             Twist::new(Face::I, TwistDirectionEnum::DBL, LayerEnum::Both),
         ],
     ]
-    .map(|v| TwistSequence(v));
+    .map(TwistSequence);
 
     // spawn threads to search for solutions in parallel from different orientations
     for twist_seq in orientations {
@@ -274,7 +282,7 @@ pub fn fast_solve(cube: PieceCube, max_sol_length: Option<u32>) -> Receiver<(Twi
         let c_raw_sol_send = raw_sol_send.clone();
         let pre_seq = twist_seq.clone();
 
-        thread::spawn(move || {
+        std::thread::spawn(move || {
             fast_solve_internal(
                 cube.twists(twist_seq).into(),
                 c_length,
@@ -288,7 +296,7 @@ pub fn fast_solve(cube: PieceCube, max_sol_length: Option<u32>) -> Receiver<(Twi
     let (complete_sol_send, complete_sol_receive) = channel();
 
     // spawn a thread to simplify incoming solutions
-    thread::spawn(move || {
+    std::thread::spawn(move || {
         while let Ok((solution, length)) = raw_sol_receive.recv() {
             // TODO: simplify the solution and rotate it according to cube rotation before sending it back
             complete_sol_send.send((solution, length)).unwrap();
@@ -320,4 +328,10 @@ pub fn find_scramble(mut cube: CubieCube) -> TwistSequence {
     sequence.append(&mut phase3_sol);
 
     TwistSequence::from(sequence).inverse()
+}
+
+/// Generates a scramble for a cube given its index
+pub fn generate_scramble(cube_index: u128) -> Result<TwistSequence, String> {
+    let cube = CubieCube::from_index(cube_index)?;
+    Ok(find_scramble(cube))
 }

@@ -30,6 +30,7 @@ pub struct IndexIterator<T: Index> {
 }
 
 impl<T: Index> IndexIterator<T> {
+    #[allow(unused)]
     fn new(num_indices: u64) -> Self {
         Self {
             index: 0,

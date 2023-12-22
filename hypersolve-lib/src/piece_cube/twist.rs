@@ -1,5 +1,5 @@
 use crate::{
-    common::{Axis, Face, Sign, Vector3, Vector4},
+    common::*,
     cubie_cube::{Move, HYPERSOLVE_TWISTS},
 };
 use itertools::Itertools;
@@ -94,7 +94,7 @@ impl Twist {
         self.layer == LayerEnum::Both
     }
 
-    pub const fn new(face: Face, direction: TwistDirectionEnum, layer: LayerEnum) -> Twist {
+    pub(crate) const fn new(face: Face, direction: TwistDirectionEnum, layer: LayerEnum) -> Twist {
         Twist {
             face,
             direction,
@@ -253,6 +253,7 @@ impl Twist {
     strum_macros::EnumString,
 )]
 #[repr(u8)]
+#[allow(clippy::upper_case_acronyms)]
 pub enum TwistDirectionEnum {
     /// 90-degree face (2c) twist clockwise around `R`
     #[default]

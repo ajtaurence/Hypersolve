@@ -1,5 +1,5 @@
+use super::*;
 use crate::{
-    cubie_cube::{Move, MoveIterator},
     node_cube::{Node, Phase1Node, Phase2Node, Phase3Node},
     prune::{ArrayPruningTable, HashMapPruningTable, PruningTable},
 };
@@ -12,7 +12,8 @@ pub trait Phase {
     type PruningTable: PruningTable<Self::Node>;
 
     const PRUNING_DEPTH: u8;
-    const MOVE_ITERATOR: MoveIterator = MoveIterator::new(Move(0)..Move(Self::N_MOVES as u8));
+    const MOVE_ITERATOR: cubie_cube::MoveIterator =
+        cubie_cube::MoveIterator::new(cubie_cube::Move(0)..cubie_cube::Move(Self::N_MOVES as u8));
 }
 
 pub struct Phase1 {}

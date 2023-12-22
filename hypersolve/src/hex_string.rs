@@ -1,4 +1,3 @@
-use crate::cubie_cube::N_CUBE_STATES;
 use sha2::Digest;
 use std::{
     error::Error,
@@ -75,7 +74,7 @@ impl<const N: usize> HexString<N> {
     }
 
     pub fn to_cube_index(&self) -> u128 {
-        u128::from_le_bytes(self.hash()[..16].try_into().unwrap()) % N_CUBE_STATES
+        u128::from_le_bytes(self.hash()[..16].try_into().unwrap()) % hypersolve_lib::N_CUBE_STATES
     }
 }
 

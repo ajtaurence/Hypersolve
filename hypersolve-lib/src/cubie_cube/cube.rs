@@ -69,7 +69,7 @@ impl CubieCube {
         );
 
         let orientation =
-            Orientation::from_k4_c3_coords(phase1_node.get_index() as u32, phase2_node.c3_coord);
+            Orientation::from_k4_c3_coords(phase1_node.get_index(), phase2_node.c3_coord);
 
         Ok(CubieCube {
             orientation,

@@ -1,7 +1,7 @@
 use super::*;
 
+use crate::common::*;
 use crate::{
-    common::Axis,
     cubie_cube::{CubieCube, Move, Orientation, Permutation, A4_MOVE_TABLE, PERM_MOVE_TABLE},
     groups::{Identity, K4},
     math,
@@ -202,6 +202,7 @@ impl PartialEq for Phase1Node {
 }
 
 impl Phase1Node {
+    #[allow(unused)]
     pub fn apply_move(self, i: usize) -> Self {
         Phase1Node {
             orientation: self

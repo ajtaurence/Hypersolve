@@ -112,7 +112,7 @@ impl<P: Phase> AxisPriorityMoveIterator<P> {
     pub fn new(axis: Axis) -> Self {
         Self {
             axis_sorted_moves: AXIS_SORTED_MOVES[P::PHASE_INDEX][axis as usize][..P::N_MOVES]
-                .into_iter(),
+                .iter(),
             phantom: PhantomData,
         }
     }

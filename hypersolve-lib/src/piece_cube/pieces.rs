@@ -1,14 +1,6 @@
-use std::{
-    fmt::{Debug, Display},
-    ops::{Index, IndexMut},
-};
-
-use crate::{
-    common::{Axis, Face, Parity, Sign, Vector, Vector4},
-    groups::Permutation,
-};
-
 use super::*;
+
+use crate::{common::*, groups::Permutation};
 
 /// A piece on the cube represented by a vector of 4 faces. Each face represents the
 /// face on which the sticker from that axis currently is.
@@ -18,7 +10,7 @@ pub struct Piece {
     pub faces: Vector4<Face>,
 }
 
-impl Display for Piece {
+impl std::fmt::Display for Piece {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -28,7 +20,7 @@ impl Display for Piece {
     }
 }
 
-impl Debug for Piece {
+impl std::fmt::Debug for Piece {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -44,7 +36,7 @@ impl Default for Piece {
     }
 }
 
-impl Index<Axis> for Piece {
+impl std::ops::Index<Axis> for Piece {
     type Output = Face;
 
     fn index(&self, index: Axis) -> &Self::Output {
@@ -52,7 +44,7 @@ impl Index<Axis> for Piece {
     }
 }
 
-impl IndexMut<Axis> for Piece {
+impl std::ops::IndexMut<Axis> for Piece {
     fn index_mut(&mut self, index: Axis) -> &mut Self::Output {
         &mut self.faces[index as usize]
     }
@@ -64,7 +56,7 @@ impl Piece {
     }
 
     /// Returns the axis permutation of the piece in the "is replaced by format"
-    pub fn to_axis_permutation(&self) -> Permutation<4> {
+    pub fn to_axis_permutation(self) -> Permutation<4> {
         Permutation::from_array(self.faces.map(|f| f.axis() as usize).0).inverse()
     }
 
@@ -153,19 +145,19 @@ impl From<Piece> for PieceLocation {
     }
 }
 
-impl Display for PieceLocation {
+impl std::fmt::Display for PieceLocation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.solved_piece())
     }
 }
 
-impl Debug for PieceLocation {
+impl std::fmt::Debug for PieceLocation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self.solved_piece())
     }
 }
 
-impl Index<Axis> for PieceLocation {
+impl std::ops::Index<Axis> for PieceLocation {
     type Output = Sign;
     fn index(&self, axis: Axis) -> &Self::Output {
         match axis {
@@ -177,7 +169,7 @@ impl Index<Axis> for PieceLocation {
     }
 }
 
-impl IndexMut<Axis> for PieceLocation {
+impl std::ops::IndexMut<Axis> for PieceLocation {
     fn index_mut(&mut self, axis: Axis) -> &mut Self::Output {
         match axis {
             Axis::X => &mut self.0[0],

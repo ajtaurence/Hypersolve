@@ -353,8 +353,6 @@ for_all_unique_pairs!(impl_vector_num_cast!(
     u8, i8, u16, i16, u32, i32, u64, i64, u128, i128, usize, isize, f32, f64
 ));
 
-pub type Vector1<T> = Vector<T, 1>;
-pub type Vector2<T> = Vector<T, 2>;
 pub type Vector3<T> = Vector<T, 3>;
 pub type Vector4<T> = Vector<T, 4>;
 

@@ -4,7 +4,7 @@ use std::{
     collections::HashMap,
     hash::Hash,
     marker::PhantomData,
-    ops::{Add, Deref, DerefMut},
+    ops::{Deref, DerefMut},
 };
 
 /// A trait for objects that can act as pruning tables, storing the lower bound
@@ -18,15 +18,6 @@ pub trait PruningTable<N: Node> {
 
     /// Gets a lower bound on the depth of the node
     fn get_depth_bound(&self, node: N) -> u8;
-
-    /// Gets the depth and returns whether the depth is certain or a lower bound
-    fn get_depth(&self, node: N) -> CertainOrBound<u8> {
-        let depth = self.get_depth_bound(node);
-        match depth <= self.get_pruning_depth() {
-            true => CertainOrBound::Certain(depth),
-            false => CertainOrBound::LowerBound(depth),
-        }
-    }
 
     /// Gets the depth to which values are certain
     fn get_pruning_depth(&self) -> u8;
@@ -77,62 +68,8 @@ pub trait ArchivedPruningTable<N: Node> {
     /// Gets a lower bound on the depth of the node
     fn get_depth_bound(&self, node: N) -> u8;
 
-    /// Gets the depth and returns whether the depth is certain or a lower bound
-    fn get_depth(&self, node: N) -> CertainOrBound<u8> {
-        let depth = self.get_depth_bound(node);
-        match depth <= self.get_pruning_depth() {
-            true => CertainOrBound::Certain(depth),
-            false => CertainOrBound::LowerBound(depth),
-        }
-    }
-
     /// Gets the depth to which values are certain
     fn get_pruning_depth(&self) -> u8;
-}
-
-impl<T: Add<Output = T>> Add for CertainOrBound<T> {
-    type Output = Self;
-    fn add(self, rhs: Self) -> Self::Output {
-        use CertainOrBound::*;
-        match (self, rhs) {
-            (Certain(a), Certain(b)) => Certain(a + b),
-            (Certain(a), LowerBound(b)) => LowerBound(a + b),
-            (LowerBound(a), Certain(b)) => LowerBound(a + b),
-            (LowerBound(a), LowerBound(b)) => LowerBound(a + b),
-        }
-    }
-}
-
-/// Represents an exact value or a lower bound value
-pub enum CertainOrBound<T> {
-    Certain(T),
-    LowerBound(T),
-}
-
-impl<T> CertainOrBound<T> {
-    pub fn into_inner(self) -> T {
-        use CertainOrBound::*;
-        match self {
-            Certain(value) => value,
-            LowerBound(value) => value,
-        }
-    }
-
-    pub fn is_exact(&self) -> bool {
-        use CertainOrBound::*;
-        match self {
-            Certain(_) => true,
-            LowerBound(_) => false,
-        }
-    }
-
-    pub fn is_bound(&self) -> bool {
-        use CertainOrBound::*;
-        match self {
-            Certain(_) => false,
-            LowerBound(_) => true,
-        }
-    }
 }
 
 /// A pruning table backed by a hashmap for storing a selection of nodes in phases where the
