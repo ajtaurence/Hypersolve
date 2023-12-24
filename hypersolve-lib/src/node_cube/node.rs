@@ -8,6 +8,7 @@ use crate::{
     phases::{Phase, Phase1, Phase2, Phase3},
     prune::{ArchivedPruningTable, PruningTable},
 };
+use derivative::Derivative;
 use rayon::prelude::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 use rkyv::Archive;
 use std::hash::Hash;
@@ -146,7 +147,7 @@ fn gen_o_move_table() -> Box<[[u16; Phase3::N_MOVES]; N_O_COORD_STATES as usize]
 
 /// A trait for highly optimized computation of how certain aspects of the cube
 /// are affected by twists.
-pub trait Node: Identity + PartialEq + Copy + From<CubieCube> {
+pub(crate) trait Node: Identity + PartialEq + Copy + From<CubieCube> {
     const N_STATES: usize;
 
     type Phase: Phase;
@@ -189,16 +190,14 @@ pub trait Node: Identity + PartialEq + Copy + From<CubieCube> {
 }
 
 /// A node representing a cube state in phase 1
+#[derive(Derivative)]
+#[derivative(PartialEq, Eq)]
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Phase1Node {
     orientation: Orientation<K4>,
-    last_move: Option<Move>,
-}
 
-impl PartialEq for Phase1Node {
-    fn eq(&self, other: &Self) -> bool {
-        self.orientation == other.orientation
-    }
+    #[derivative(PartialEq = "ignore")]
+    last_move: Option<Move>,
 }
 
 impl Phase1Node {
@@ -267,17 +266,15 @@ impl From<CubieCube> for Phase1Node {
 }
 
 /// A node representing a cube state in phase 2
+#[derive(Derivative)]
+#[derivative(PartialEq, Eq)]
 #[derive(Default, Clone, Copy)]
 pub struct Phase2Node {
     pub c3_coord: u32,
     pub io_coord: u16,
-    pub last_move: Option<Move>,
-}
 
-impl PartialEq for Phase2Node {
-    fn eq(&self, other: &Self) -> bool {
-        self.c3_coord == other.c3_coord && self.io_coord == other.io_coord
-    }
+    #[derivative(PartialEq = "ignore")]
+    pub last_move: Option<Move>,
 }
 
 impl Identity for Phase2Node {
@@ -339,17 +336,15 @@ impl From<CubieCube> for Phase2Node {
 }
 
 /// A node representing a cube state in phase 3
+#[derive(Derivative)]
+#[derivative(PartialEq, Eq)]
 #[derive(Default, Clone, Copy)]
 pub struct Phase3Node {
     pub i_coord: u16,
     pub o_coord: u16,
-    pub last_move: Option<Move>,
-}
 
-impl PartialEq for Phase3Node {
-    fn eq(&self, other: &Self) -> bool {
-        self.i_coord == other.i_coord && self.o_coord == other.o_coord
-    }
+    #[derivative(PartialEq = "ignore")]
+    pub last_move: Option<Move>,
 }
 
 impl Identity for Phase3Node {

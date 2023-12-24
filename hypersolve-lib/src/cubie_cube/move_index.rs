@@ -103,7 +103,7 @@ fn generate_axis_sorted_moves() {
 }
 
 /// An iterator over a set of moves that don't contain moves along a certain axis
-pub struct AxisPriorityMoveIterator<P: Phase> {
+pub(crate) struct AxisPriorityMoveIterator<P: Phase> {
     axis_sorted_moves: std::slice::Iter<'static, Move>,
     phantom: PhantomData<P>,
 }

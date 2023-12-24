@@ -36,14 +36,6 @@ impl Permutation {
         self.0
     }
 
-    /// Maps the function `f` over all elements
-    pub fn map<F>(self, f: F) -> Permutation
-    where
-        F: FnMut(u8) -> u8,
-    {
-        Permutation(self.into_inner().map(f))
-    }
-
     /// Permutes this permutation by another
     pub fn permute(self, permutation: Permutation) -> Permutation {
         let mut map = [0; 15];
@@ -70,11 +62,6 @@ impl Permutation {
     pub fn invert(mut self) -> Self {
         self = self.inverse();
         self
-    }
-
-    /// Returns whether the permutation is solved
-    pub fn is_solved(self) -> bool {
-        self == Self::solved()
     }
 
     /// Returns the solved permutation (identity)

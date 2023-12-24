@@ -27,8 +27,10 @@ enum-iterator = "1.1"
 once_cell = "1.17.1"
 rayon = "1.7.0"
 rkyv = "0.7.42"
-atty = "0.2.14"
+derivative = "2.2.0"
+indicatif = { version = "0.17.7", features = ["rayon"], optional = true }
 
 [features]
 default = []
+progress = ["indicatif"]
 gen-const-data = []

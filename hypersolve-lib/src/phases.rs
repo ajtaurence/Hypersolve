@@ -10,7 +10,7 @@ use crate::{
 pub const GODS_NUMBER_UPPER_BOUND: u32 =
     (Phase1::MAX_DEPTH + Phase2::MAX_DEPTH + Phase3::MAX_DEPTH) as u32;
 
-pub trait Phase {
+pub(crate) trait Phase {
     /// Number of allowed moves in this phase
     const N_MOVES: usize;
     /// God's number for this phase
@@ -21,6 +21,9 @@ pub trait Phase {
     type Node: Node;
     /// Pruning table type used in this phase
     type PruningTable: PruningTable<Self::Node>;
+
+    /// Table containing the number of states at each depth
+    fn depth_table() -> &'static [u64];
 
     /// Pruning table depth for this phase
     const PRUNING_DEPTH: u8;
@@ -38,6 +41,10 @@ impl Phase for Phase1 {
     const PHASE_INDEX: usize = 0;
     type Node = Phase1Node;
     type PruningTable = HashMapPruningTable<Phase1Node>;
+
+    fn depth_table() -> &'static [u64] {
+        &[1, 6, 159, 8114, 392430, 18449652, 503025048, 551865956, 458]
+    }
 }
 
 pub struct Phase2 {}
@@ -49,6 +56,22 @@ impl Phase for Phase2 {
     const PHASE_INDEX: usize = 1;
     type Node = Phase2Node;
     type PruningTable = HashMapPruningTable<Phase2Node>;
+
+    fn depth_table() -> &'static [u64] {
+        &[
+            1,
+            9,
+            142,
+            2856,
+            55145,
+            1019768,
+            18713304,
+            343932254,
+            5457583788,
+            23662063568,
+            1295034680,
+        ]
+    }
 }
 
 pub struct Phase3 {}
@@ -60,4 +83,11 @@ impl Phase for Phase3 {
     const PHASE_INDEX: usize = 2;
     type Node = Phase3Node;
     type PruningTable = ArrayPruningTable<Phase3Node>;
+
+    fn depth_table() -> &'static [u64] {
+        &[
+            1, 12, 57, 219, 766, 2253, 6572, 19300, 54228, 143564, 356840, 847364, 1907800,
+            3998040, 7922504, 14752472, 23319352, 25929896, 16525576, 5168672, 637632, 13280,
+        ]
+    }
 }

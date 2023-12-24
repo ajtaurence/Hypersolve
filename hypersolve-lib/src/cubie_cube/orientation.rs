@@ -51,10 +51,7 @@ impl Orientation<A4> {
 }
 
 impl<T: Identity + Copy + PartialEq> Orientation<T> {
-    pub fn is_solved(self) -> bool {
-        self == Self::solved()
-    }
-
+    #[cfg(feature = "gen-const-data")]
     pub fn solved() -> Orientation<T> {
         Orientation {
             state: [T::IDENTITY; 15],

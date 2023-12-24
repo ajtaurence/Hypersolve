@@ -26,13 +26,27 @@ where
     } else {
         use std::io::Write;
 
-        let is_terminal = atty::is(atty::Stream::Stdout);
+        #[cfg(feature = "progress")]
+        let pb = {
+            // Create static multiprogress bar
+            static PROGRESS_BAR: once_cell::sync::Lazy<indicatif::MultiProgress> =
+                once_cell::sync::Lazy::new(indicatif::MultiProgress::new);
 
-        if is_terminal {
-            println!("Generating {}...", filename);
-        }
+            // create progress bar instance
+            let pb = PROGRESS_BAR.add(
+                indicatif::ProgressBar::new_spinner()
+                    .with_style(
+                        indicatif::ProgressStyle::with_template("{msg}{spinner}")
+                            .unwrap()
+                            .tick_strings(&[".  ", ".. ", "...", "...", "..."]),
+                    )
+                    .with_message(format!("Generating {}", filename)),
+            );
 
-        // generate the object
+            pb.enable_steady_tick(std::time::Duration::from_millis(200));
+            pb
+        };
+
         let bytes = rkyv::to_bytes::<_, 0>(&f()).expect("unable to serialize object to bytes");
 
         // write the bytes to the file
@@ -41,11 +55,13 @@ where
         file.write_all(bytes.as_slice())
             .expect("unable to write data file");
 
-        if is_terminal {
-            println!("Finished {}", filename);
-        }
+        #[allow(clippy::let_and_return)]
+        let bytes = bytes.to_vec();
 
-        bytes.to_vec()
+        #[cfg(feature = "progress")]
+        pb.finish_and_clear();
+
+        bytes
     }
 }
 

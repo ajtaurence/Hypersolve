@@ -31,11 +31,13 @@ impl From<PieceCube> for CubieCube {
 
 impl CubieCube {
     /// Returns the solved state
+    #[allow(unused)]
     pub fn solved() -> CubieCube {
         CubieCube::default()
     }
 
     // Gets the unique index of this cube
+    #[allow(unused)]
     pub fn get_index(self) -> u128 {
         let phase1_index = Phase1Node::from(self).get_index() as u128;
         let phase2_index = Phase2Node::from(self).get_index() as u128;
