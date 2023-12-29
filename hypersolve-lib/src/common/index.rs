@@ -120,13 +120,7 @@ where
         }
 
         // transmute the type of the array now that it is initialized
-        let transmuted_result = unsafe { std::ptr::read(result.as_ptr() as *const [T; N]) };
-
-        // make sure drop doesn't get called on the original array
-        std::mem::forget(result);
-
-        // return the array
-        transmuted_result
+        unsafe { std::ptr::read(result.as_ptr() as *const [T; N]) }
     }
 
     fn to_index(self) -> u64 {

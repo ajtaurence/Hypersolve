@@ -234,9 +234,6 @@ impl<T, const N: usize> Vector<T, N> {
         // transmute the type of the array now that it is initialized
         let transmuted_result = unsafe { std::ptr::read(result.as_ptr() as *const [T; N]) };
 
-        // make sure drop doesn't get called on the original array
-        std::mem::forget(result);
-
         // return the vector
         Vector(transmuted_result)
     }

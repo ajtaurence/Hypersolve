@@ -108,9 +108,9 @@ mod tests {
 
     #[test]
     fn test_cubie_cube_twists() {
-        for i in 0..HYPERSOLVE_TWISTS.len() {
+        for (i, &twist) in HYPERSOLVE_TWISTS.iter().enumerate() {
             let cubiecube = CubieCube::from(PieceCube::solved()).apply_move(Move(i as u8));
-            let piececube = PieceCube::solved().twist(HYPERSOLVE_TWISTS[i]);
+            let piececube = PieceCube::solved().twist(twist);
 
             assert!(cubiecube == CubieCube::from(piececube))
         }
