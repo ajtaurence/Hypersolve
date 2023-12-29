@@ -5,8 +5,18 @@ use crate::{
 use itertools::Itertools;
 use num_enum::{FromPrimitive, TryFromPrimitive};
 use once_cell::sync::Lazy;
-use std::{collections::HashMap, error::Error, fmt::Display, str::FromStr};
+use std::{collections::HashMap, error::Error, str::FromStr};
 use strum::{EnumIter, IntoEnumIterator};
+use strum_macros::Display;
+
+/// Notation types for twists
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Default, Display)]
+#[allow(clippy::upper_case_acronyms)]
+pub enum Notation {
+    #[default]
+    Standard,
+    MC4D,
+}
 
 /// Errors for parsing MC4D twist format
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -52,6 +62,16 @@ pub enum LayerEnum {
     Both = 3,
 }
 
+impl LayerEnum {
+    fn to_standard_string(self) -> &'static str {
+        match self {
+            Self::This => "",
+            Self::Other => "{2}",
+            Self::Both => "{1-2}",
+        }
+    }
+}
+
 /// A twist that can be applied to the cube
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Twist {
@@ -63,12 +83,6 @@ pub struct Twist {
 impl From<Move> for Twist {
     fn from(value: Move) -> Self {
         HYPERSOLVE_TWISTS[value.0 as usize]
-    }
-}
-
-impl std::fmt::Display for Twist {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.to_mc4d_string())
     }
 }
 
@@ -102,6 +116,14 @@ impl Twist {
     /// Returns the sign of the axis this twist is on
     pub const fn sign(&self) -> Sign {
         self.face.sign()
+    }
+
+    /// Returns the string for this move in the given notation
+    pub fn to_string(&self, notation: Notation) -> String {
+        match notation {
+            Notation::Standard => self.to_standard_string(),
+            Notation::MC4D => self.to_mc4d_string(),
+        }
     }
 
     /// Returns the inverse of this twist
@@ -186,6 +208,43 @@ impl Twist {
         let direction_id = 1;
         let layer_mask = self.layer as u8;
         format!("{sticker_id},{direction_id},{layer_mask}")
+    }
+
+    /// Returns the standard string for this twist    
+    pub fn to_standard_string(self) -> String {
+        if self.layer == LayerEnum::Other {
+            return Twist::new(self.face.opposite(), self.direction.rev(), LayerEnum::This)
+                .to_standard_string();
+        }
+
+        let neighboring_faces = self
+            .direction
+            .signs_within_face()
+            .into_iter()
+            .zip(self.face.basis_faces())
+            .filter_map(|(s, f)| match s {
+                ZeroOrSign::Zero => None,
+                ZeroOrSign::Pos => Some(f * Sign::Pos),
+                ZeroOrSign::Neg => Some(f * Sign::Neg),
+            })
+            .sorted_by_key(|f| match f.axis() {
+                Axis::Y => 0,
+                Axis::Z => 1,
+                Axis::X => 2,
+                Axis::W => 3,
+            });
+
+        let faces = std::iter::once(self.face).chain(neighboring_faces);
+
+        let mut string = self.layer.to_standard_string().to_owned();
+
+        string.extend(faces.map(|f| f.to_string()));
+
+        if self.direction.is_double() {
+            string.push('2')
+        }
+
+        string
     }
 
     fn mc4d_twist_order() -> impl Iterator<Item = Option<(Face, TwistDirectionEnum)>> {
@@ -395,6 +454,12 @@ impl TwistDirectionEnum {
         }
     }
 
+    fn is_double(self) -> bool {
+        use TwistDirectionEnum::*;
+
+        matches!(self, R2 | L2 | U2 | D2 | F2 | B2)
+    }
+
     fn double(self) -> Option<Self> {
         use TwistDirectionEnum::*;
 
@@ -442,6 +507,44 @@ impl TwistDirectionEnum {
             _ => None,
         }
     }
+
+    fn signs_within_face(&self) -> Vector<ZeroOrSign, 3> {
+        use TwistDirectionEnum::*;
+
+        Vector(match self.half().unwrap_or(*self) {
+            UFR => [1, 1, 1],
+            UFL => [-1, 1, 1],
+            DFR => [1, -1, 1],
+            DFL => [-1, -1, 1],
+            UBR => [1, 1, -1],
+            UBL => [-1, 1, -1],
+            DBR => [1, -1, -1],
+            DBL => [-1, -1, -1],
+
+            UR => [1, 1, 0],
+            UL => [-1, 1, 0],
+            DR => [1, -1, 0],
+            DL => [-1, -1, 0],
+            FR => [1, 0, 1],
+            FL => [-1, 0, 1],
+            BR => [1, 0, -1],
+            BL => [-1, 0, -1],
+            UF => [0, 1, 1],
+            DF => [0, -1, 1],
+            UB => [0, 1, -1],
+            DB => [0, -1, -1],
+
+            R => [1, 0, 0],
+            L => [-1, 0, 0],
+            U => [0, 1, 0],
+            D => [0, -1, 0],
+            F => [0, 0, 1],
+            B => [0, 0, -1],
+
+            _ => unreachable!(),
+        })
+        .map(|i| i.try_into().unwrap())
+    }
 }
 
 /// Wrapper on a vector of twists
@@ -459,15 +562,12 @@ impl TwistSequence {
     pub fn inverse(&self) -> Self {
         self.0.iter().rev().map(|twist| twist.inverse()).collect()
     }
-}
 
-impl Display for TwistSequence {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            self.0.iter().map(|twist| twist.to_mc4d_string()).join(" ")
-        )
+    pub fn to_string(&self, notation: Notation) -> String {
+        self.0
+            .iter()
+            .map(|twist| twist.to_string(notation))
+            .join(" ")
     }
 }
 
@@ -544,5 +644,26 @@ mod tests {
                 })
             );
         }
+    }
+
+    #[test]
+    fn test_twist_standard_string() {
+        let twist = Twist::new(Face::I, TwistDirectionEnum::R, LayerEnum::This);
+        assert_eq!(twist.to_standard_string(), "IR");
+
+        let twist = Twist::new(Face::I, TwistDirectionEnum::R, LayerEnum::Other);
+        assert_eq!(twist.to_standard_string(), "OL");
+
+        let twist = Twist::new(Face::R, TwistDirectionEnum::F, LayerEnum::This);
+        assert_eq!(twist.to_standard_string(), "RF");
+
+        let twist = Twist::new(Face::R, TwistDirectionEnum::F, LayerEnum::Both);
+        assert_eq!(twist.to_standard_string(), "{1-2}RF");
+
+        let twist = Twist::new(Face::B, TwistDirectionEnum::UFR, LayerEnum::This);
+        assert_eq!(twist.to_standard_string(), "BURI");
+
+        let twist = Twist::new(Face::R, TwistDirectionEnum::UFR, LayerEnum::This);
+        assert_eq!(twist.to_standard_string(), "RUFO");
     }
 }
