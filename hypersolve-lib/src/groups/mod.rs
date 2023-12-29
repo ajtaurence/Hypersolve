@@ -1,14 +1,10 @@
 mod a4;
 mod c3;
-mod cyclic;
-mod direct_product;
 mod k4;
 mod permutation;
 
 pub use a4::*;
 pub use c3::*;
-pub use cyclic::*;
-pub use direct_product::*;
 pub use k4::*;
 pub use permutation::*;
 
