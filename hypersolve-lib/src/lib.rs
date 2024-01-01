@@ -3,24 +3,6 @@
 //! the upper bound on God's number for the 2<sup>4</sup> to 39.
 
 #[macro_use]
-mod macros;
-#[macro_use]
 mod common;
-mod cubie_cube;
-mod groups;
-mod math;
-mod node_cube;
-mod phases;
-pub(crate) mod piece_cube;
-mod prune;
-mod solve;
-
-pub use common::{Axis, Face, Sign};
-pub use cubie_cube::N_CUBE_STATES;
-pub use phases::GODS_NUMBER_UPPER_BOUND;
-pub use piece_cube::puzzle::PieceCube as Cube;
-pub use piece_cube::{
-    CubeIndex, CubeIndexError, LayerEnum, Notation, Twist, TwistDirectionEnum, TwistParseError,
-    TwistSequence,
-};
-pub use solve::{fast_solve, find_scramble};
+pub mod puzzle;
+pub mod solver;

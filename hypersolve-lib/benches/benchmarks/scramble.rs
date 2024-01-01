@@ -1,11 +1,13 @@
-use super::*;
 use rand;
+
+use super::*;
 
 fn scramble_benchmark(c: &mut Criterion) {
     c.bench_function("scramble", |b| {
         b.iter(|| {
-            let index = CubeIndex::try_from(rand::random::<u128>() % N_CUBE_STATES).unwrap();
-            find_scramble(black_box(index))
+            let index = puzzle::CubeIndex::try_from(rand::random::<u128>() % solver::N_CUBE_STATES)
+                .unwrap();
+            solver::find_scramble(black_box(index))
         })
     });
 }

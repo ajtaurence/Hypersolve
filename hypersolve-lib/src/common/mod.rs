@@ -1,14 +1,11 @@
-mod axis;
-mod face;
-mod sign;
+#[macro_use]
+pub(crate) mod macros;
+pub(super) mod groups;
+pub(super) mod math;
+
 #[macro_use]
 mod vector;
-mod index;
 mod parity;
 
-pub use axis::*;
-pub use face::*;
-pub(crate) use index::*;
-pub(crate) use parity::*;
-pub use sign::*;
-pub(crate) use vector::*;
+pub(super) use parity::*;
+pub(super) use vector::*;

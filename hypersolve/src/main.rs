@@ -1,7 +1,6 @@
 use clap::{Parser, Subcommand, ValueEnum};
-use hypersolve_lib::*;
-use hypersolve::*;
 use colored::Colorize;
+use hypersolve::*;
 
 
 #[derive(Parser)]
@@ -73,7 +72,7 @@ fn main() {
         name: capitalize_first_letter(env!("CARGO_PKG_NAME")).into(),
         version: env!("CARGO_PKG_VERSION").into(),
         authors: env!("CARGO_PKG_AUTHORS").into(),
-        homepage: "".into(),
+        homepage: "https://github.com/ajtaurence/Hypersolve/issues".into(),
     });
 
     // make windows colorize text correctly
@@ -94,7 +93,7 @@ fn solve(moves: Vec<Twist>, notation: Notation) {
     let solutions = fast_solve(moves, None);
     while let Ok((solution, length)) = solutions.recv() {
         println!("[{}]", format!("{} STM", length).yellow().underline());
-        println!("{}", solution.to_string(notation));
+        println!("{}", solution.to_notation(notation));
     }
 }
 
@@ -105,7 +104,7 @@ fn scramble(key: Option<HexString<16>>, notation: Notation) {
     let cube_index = key.to_cube_index();
 
     println!("Verification key: [{}]", key.to_string().yellow().underline());
-    println!("{}", find_scramble(cube_index).to_string(notation))
+    println!("{}", find_scramble(cube_index).to_notation(notation))
 }
 
 /// Function called on verify command

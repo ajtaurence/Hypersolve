@@ -1,11 +1,10 @@
 use super::*;
-use crate::groups::Permutation;
 
 /// A fixed length vector of an arbitrary type.
 ///
 /// Supports elementwise operations.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Vector<T, const N: usize>(pub [T; N]);
+pub(crate) struct Vector<T, const N: usize>(pub [T; N]);
 
 impl<T, const N: usize> std::fmt::Debug for Vector<T, N>
 where
@@ -20,21 +19,6 @@ where
             }
         }
         f.write_str(")")
-    }
-}
-
-impl<T, const N: usize> Index for Vector<T, N>
-where
-    T: Index + Clone,
-{
-    const NUM_INDICES: u64 = T::NUM_INDICES.pow(N as u32);
-
-    fn from_index(index: u64) -> Self {
-        Vector(<[T; N]>::from_index(index))
-    }
-
-    fn to_index(self) -> u64 {
-        self.0.to_index()
     }
 }
 
@@ -282,7 +266,7 @@ impl<T, const N: usize> Vector<T, N> {
     }
 
     /// Permutes the elements of the vector by the permutation
-    pub fn permute(self, permutation: Permutation<N>) -> Self
+    pub fn permute(self, permutation: groups::Permutation<N>) -> Self
     where
         T: Clone,
     {
@@ -476,15 +460,5 @@ mod tests {
     fn vector_num_casting() {
         let _: Vector<i8, 5> = Vector::<f32, 5>::from_array([1., 0., 2., 5., -1.]).into();
         let _: Vector<f64, 5> = Vector::<f32, 5>::from_array([1., 0., 2., 5., -1.]).into();
-    }
-
-    #[test]
-    fn vector_from_index() {
-        let vector = Vector::<bool, 10>::from_index(10);
-
-        assert_eq!(
-            vector,
-            Vector([false, true, false, true, false, false, false, false, false, false])
-        );
     }
 }

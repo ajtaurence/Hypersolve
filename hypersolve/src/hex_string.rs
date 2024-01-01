@@ -1,18 +1,18 @@
-use hypersolve_lib::CubeIndex;
 use sha2::Digest;
 use std::{
-    error::Error,
     fmt::{Debug, Display},
     str::FromStr,
 };
 
-#[derive(Debug, Clone, Copy)]
+use super::*;
+
+#[derive(Debug, Clone, Copy, thiserror::Error)]
 pub enum HexStringError<const N: usize> {
+    #[error("invalid character '{c}' at position {index}, valid characters are: 0...9, a...f")]
     InvalidHexCharacter { c: char, index: usize },
+    #[error("invalid string length, expected {} characters", 2 * N)]
     InvalidStringLength,
 }
-
-impl<const N: usize> Error for HexStringError<N> {}
 
 impl<const N: usize> From<hex::FromHexError> for HexStringError<N> {
     fn from(value: hex::FromHexError) -> Self {
@@ -23,21 +23,6 @@ impl<const N: usize> From<hex::FromHexError> for HexStringError<N> {
             hex::FromHexError::InvalidStringLength => Self::InvalidStringLength,
             hex::FromHexError::OddLength => Self::InvalidStringLength,
         }
-    }
-}
-
-impl<const N: usize> Display for HexStringError<N> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let message = match self {
-            Self::InvalidHexCharacter { c, index } => format!(
-                "Invalid character '{}' at position {}. Valid ones are: 0...9, a...f or A...F",
-                c, index
-            ),
-            Self::InvalidStringLength => {
-                format!("Invalid string length. Expected {} characters.", 2 * N)
-            }
-        };
-        write!(f, "{}", message)
     }
 }
 
@@ -75,11 +60,7 @@ impl<const N: usize> HexString<N> {
     }
 
     pub fn to_cube_index(&self) -> CubeIndex {
-        CubeIndex::try_from(
-            u128::from_le_bytes(self.hash()[..16].try_into().unwrap())
-                % hypersolve_lib::N_CUBE_STATES,
-        )
-        .unwrap()
+        CubeIndex::try_from(u128::from_le_bytes(self.hash()[..16].try_into().unwrap())).unwrap()
     }
 }
 
