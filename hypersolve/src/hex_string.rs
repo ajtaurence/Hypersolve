@@ -60,7 +60,10 @@ impl<const N: usize> HexString<N> {
     }
 
     pub fn to_cube_index(&self) -> CubeIndex {
-        CubeIndex::try_from(u128::from_le_bytes(self.hash()[..16].try_into().unwrap())).unwrap()
+        CubeIndex::try_from(
+            u128::from_le_bytes(self.hash()[..16].try_into().unwrap()) % N_CUBE_STATES,
+        )
+        .unwrap()
     }
 }
 
