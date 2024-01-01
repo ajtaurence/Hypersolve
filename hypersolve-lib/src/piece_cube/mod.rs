@@ -1,9 +1,11 @@
 // Much of the code for this module was taken from or closely resembles Hyperspeedcube: https://github.com/HactarCE/Hyperspeedcube
 
+pub mod cube_index;
 mod pieces;
 pub mod puzzle;
 mod twist;
 
+pub use cube_index::*;
 pub use pieces::*;
 pub use twist::*;
 

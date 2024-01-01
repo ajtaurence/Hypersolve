@@ -7,9 +7,10 @@ use crate::{
     groups::A4,
     node_cube::{Node, Phase1Node, Phase2Node, Phase3Node},
     piece_cube::puzzle::PieceCube,
+    CubeIndex,
 };
 
-/// Total number of 2^4 cube states
+/// Total number of 2<sup>4</sup> cube states (ignoring cube rotations)
 pub const N_CUBE_STATES: u128 =
     Phase1Node::N_STATES as u128 * Phase2Node::N_STATES as u128 * Phase3Node::N_STATES as u128;
 
@@ -18,6 +19,12 @@ pub const N_CUBE_STATES: u128 =
 pub struct CubieCube {
     pub orientation: Orientation<A4>,
     pub permutation: Permutation,
+}
+
+impl From<CubeIndex> for CubieCube {
+    fn from(value: CubeIndex) -> Self {
+        CubieCube::from_index(value)
+    }
 }
 
 impl From<PieceCube> for CubieCube {
@@ -38,21 +45,21 @@ impl CubieCube {
 
     // Gets the unique index of this cube
     #[allow(unused)]
-    pub fn get_index(self) -> u128 {
+    pub fn get_index(self) -> CubeIndex {
         let phase1_index = Phase1Node::from(self).get_index() as u128;
         let phase2_index = Phase2Node::from(self).get_index() as u128;
         let phase3_index = Phase3Node::from(self).get_index() as u128;
 
-        phase1_index * Phase2Node::N_STATES as u128 * Phase3Node::N_STATES as u128
-            + phase2_index * Phase3Node::N_STATES as u128
-            + phase3_index
+        CubeIndex(
+            phase1_index * Phase2Node::N_STATES as u128 * Phase3Node::N_STATES as u128
+                + phase2_index * Phase3Node::N_STATES as u128
+                + phase3_index,
+        )
     }
 
     /// Returns a cube from the unique index
-    pub fn from_index(mut index: u128) -> Result<Self, String> {
-        if index >= N_CUBE_STATES {
-            return Err("Invalid cube state index".to_owned());
-        }
+    pub fn from_index(index: CubeIndex) -> Self {
+        let mut index = index.0;
 
         let phase3_node =
             Phase3Node::from_index((index % Phase3Node::N_STATES as u128) as u64, None);
@@ -73,10 +80,10 @@ impl CubieCube {
         let orientation =
             Orientation::from_k4_c3_coords(phase1_node.get_index(), phase2_node.c3_coord);
 
-        Ok(CubieCube {
+        CubieCube {
             orientation,
             permutation,
-        })
+        }
     }
 
     /// Applies the given move to the cubiecube
@@ -151,9 +158,9 @@ mod tests {
     #[test]
     fn to_from_index() {
         for i in 0..100 {
-            let index = i * 33500489927290203486927204 + 17;
+            let index = CubeIndex::try_from(i * 33500489927290203486927204 + 17).unwrap();
 
-            assert_eq!(index, CubieCube::from_index(index).unwrap().get_index());
+            assert_eq!(index, CubieCube::from_index(index).get_index());
         }
     }
 }

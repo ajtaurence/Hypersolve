@@ -4,7 +4,7 @@ use crate::{
     prune::{ArrayPruningTable, HashMapPruningTable, PruningTable},
 };
 
-/// Upper bound on 2^4 God's number (STM)
+/// Upper bound on 2<sup>4</sup> God's number (STM)
 ///
 /// A solution will always be found in this number of moves or less.
 pub const GODS_NUMBER_UPPER_BOUND: u32 =

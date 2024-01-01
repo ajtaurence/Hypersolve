@@ -1,3 +1,4 @@
+use hypersolve_lib::CubeIndex;
 use sha2::Digest;
 use std::{
     error::Error,
@@ -73,8 +74,12 @@ impl<const N: usize> HexString<N> {
         hasher.finalize().into()
     }
 
-    pub fn to_cube_index(&self) -> u128 {
-        u128::from_le_bytes(self.hash()[..16].try_into().unwrap()) % hypersolve_lib::N_CUBE_STATES
+    pub fn to_cube_index(&self) -> CubeIndex {
+        CubeIndex::try_from(
+            u128::from_le_bytes(self.hash()[..16].try_into().unwrap())
+                % hypersolve_lib::N_CUBE_STATES,
+        )
+        .unwrap()
     }
 }
 

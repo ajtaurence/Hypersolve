@@ -7,7 +7,7 @@ use crate::{
 use itertools::Itertools;
 use std::ops::{Index, IndexMut};
 
-/// Cube representation capable of computing any move
+/// High level cube representation capable of computing any move
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct PieceCube {
     pub(crate) pieces: Vector<Piece, 16>,
@@ -54,9 +54,14 @@ impl PieceCube {
         )
     }
 
-    /// Returns whether the cube is solved, allowing cube
+    /// Returns whether the cube is solved
     pub fn is_solved(&self) -> bool {
         self.reposition() == PieceCube::solved()
+    }
+
+    /// Returns the cube index of this cube
+    pub fn index(&self) -> CubeIndex {
+        CubeIndex::from(*self)
     }
 
     /// Applies the twist to this cube
@@ -75,11 +80,6 @@ impl PieceCube {
             self = self.twist(twist);
         }
         self
-    }
-
-    /// Finds a scramble that results in this cube
-    pub fn find_scramble(self) -> TwistSequence {
-        crate::solve::find_scramble(self)
     }
 
     pub(crate) fn pieces_except_last(self) -> [Piece; 15] {

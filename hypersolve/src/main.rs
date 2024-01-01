@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand, ValueEnum};
 use hypersolve_lib::*;
-use hypersolve::HexString;
+use hypersolve::*;
 use colored::Colorize;
 
 
@@ -65,7 +65,17 @@ impl From<NotationEnum> for Notation {
     }
 }
 
+
+
 fn main() {
+    // Setup human panic
+    human_panic::setup_panic!(Metadata {
+        name: capitalize_first_letter(env!("CARGO_PKG_NAME")).into(),
+        version: env!("CARGO_PKG_VERSION").into(),
+        authors: env!("CARGO_PKG_AUTHORS").into(),
+        homepage: "".into(),
+    });
+
     // make windows colorize text correctly
     #[cfg(windows)]
     colored::control::set_virtual_terminal(true).unwrap();
@@ -95,12 +105,12 @@ fn scramble(key: Option<HexString<16>>, notation: Notation) {
     let cube_index = key.to_cube_index();
 
     println!("Verification key: [{}]", key.to_string().yellow().underline());
-    println!("{}", generate_scramble(cube_index).unwrap().to_string(notation))
+    println!("{}", find_scramble(cube_index).to_string(notation))
 }
 
 /// Function called on verify command
 fn verify(key: HexString<16>, scramble: impl IntoIterator<Item = Twist>) {
-    let expected_scramble = generate_scramble(key.to_cube_index()).unwrap();
+    let expected_scramble = find_scramble(key.to_cube_index());
 
     if expected_scramble == scramble.into_iter().collect() {
         println!("{}", "Valid".green())
@@ -131,7 +141,7 @@ mod tests {
         for _ in 0..20 {
             let key = HexString::get_random();
 
-            let scramble = generate_scramble(key.to_cube_index()).unwrap();
+            let scramble = find_scramble(key.to_cube_index());
             verify(key, scramble);
         }
     }
