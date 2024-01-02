@@ -59,7 +59,7 @@ impl TryFrom<Permutation<4>> for A4 {
     type Error = String;
     fn try_from(value: Permutation<4>) -> Result<Self, Self::Error> {
         use A4::*;
-        match value.into_inner() {
+        match value.into_array() {
             [0, 1, 2, 3] => Ok(E),
             [1, 0, 3, 2] => Ok(U1),
             [3, 2, 1, 0] => Ok(U2),

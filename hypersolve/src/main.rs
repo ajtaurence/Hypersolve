@@ -120,6 +120,8 @@ fn verify(key: HexString<16>, scramble: impl IntoIterator<Item = Twist>) {
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
     use super::*;
 
     #[test]
@@ -131,7 +133,7 @@ mod tests {
 
     #[test]
     fn test_solve() {
-        solve(vec![Twist::from_mc4d_twist_string("1,1,1").unwrap()], Notation::Standard);
+        solve(vec![Twist::from_str("1,1,1").unwrap()], Notation::Standard);
     }
 
 

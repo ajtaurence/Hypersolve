@@ -6,7 +6,7 @@ where
             rkyv::ser::serializers::CompositeSerializer<
                 rkyv::ser::serializers::AlignedSerializer<rkyv::AlignedVec>,
                 rkyv::ser::serializers::FallbackScratch<
-                    rkyv::ser::serializers::HeapScratch<0>,
+                    rkyv::ser::serializers::HeapScratch<1024>,
                     rkyv::ser::serializers::AllocScratch,
                 >,
                 rkyv::ser::serializers::SharedSerializeMap,
@@ -47,7 +47,7 @@ where
             pb
         };
 
-        let bytes = rkyv::to_bytes::<_, 0>(&f()).expect("unable to serialize object to bytes");
+        let bytes = rkyv::to_bytes::<_, 1024>(&f()).expect("unable to serialize object to bytes");
 
         // write the bytes to the file
         let mut file =
@@ -67,6 +67,12 @@ where
 
 /// Loads data from a file at runtime and performs zero copy deserialization using rkyv.
 /// If the file is not present then the data will be generated from the given function.
+/// The actual type of the data will be the archived version of the type.
+///
+/// # Example
+/// ```ignore
+/// load_or_generate_data!(static DATA: type = { expr }, "filename.ext");
+/// ```
 macro_rules! load_or_generate_data {
     ($vis:vis static $name:ident: $type:ty = $expr:expr, $filename:literal) => {
         $vis static $name: once_cell::sync::Lazy<&<$type as rkyv::Archive>::Archived> =
@@ -82,12 +88,17 @@ macro_rules! load_or_generate_data {
     };
 }
 
-/// Generates lazy static data at runtime and saves to a file
+/// Loads const data at compiletime from lazy static data generated at runtime
 ///
-/// Example:
-/// const_data!(
-///    pub TEST_DATA: type = complex_runtime_calculation()
-/// );
+/// # Example
+/// ```ignore
+/// const_data!(pub DATA: type = complex_runtime_calculation());
+/// ```
+/// where `complex_runtime_calculation()` returns `Box<type>`.
+///
+/// If `feature = "gen-const-data"` then `DATA` is a lazy static type initialized by `complex_runtime_calculation()`
+/// which saves the data to disk inside `const_data` folder. If `feature = "gen-const-data"` is not active then `DATA`
+/// will be a const, loaded from the data on the disk at compile-time.
 #[cfg(feature = "gen-const-data")]
 macro_rules! const_data {
     ($vis:vis $name:ident: $type:ty = $expr:expr) => {
@@ -115,12 +126,15 @@ macro_rules! const_data {
 
 /// Loads const data at compiletime from lazy static data generated at runtime
 ///
-/// Example:
-/// const_data!(
-///    pub TEST_DATA: type = complex_runtime_calculation()
-/// );
+/// # Example
+/// ```ignore
+/// const_data!(pub DATA: type = complex_runtime_calculation());
+/// ```
+/// where `complex_runtime_calculation()` returns `Box<type>`.
 ///
-/// complex_runtime_calculation() must return Box<type>
+/// If `feature = "gen-const-data"` then `DATA` is a lazy static type initialized by `complex_runtime_calculation()`
+/// which saves the data to disk inside `const_data` folder. If `feature = "gen-const-data"` is not active then `DATA`
+/// will be a const, loaded from the data on the disk at compile-time.
 #[cfg(not(feature = "gen-const-data"))]
 macro_rules! const_data {
     ($vis:vis $name:ident: $type:ty = $epr:expr) => {

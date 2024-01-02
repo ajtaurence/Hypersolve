@@ -1,18 +1,18 @@
 //! 3-phase solver functionality
 
+mod cube_index;
 mod cubie_cube;
 mod node_cube;
 mod phases;
 mod prune;
 mod solve;
 
+pub use cube_index::*;
 use cubie_cube::*;
 use node_cube::*;
 use phases::*;
 use prune::*;
 pub use solve::*;
-
-use crate::puzzle::Axis;
 
 /// Total number of 2<sup>4</sup> cube states (ignoring cube rotations)
 pub const N_CUBE_STATES: u128 =

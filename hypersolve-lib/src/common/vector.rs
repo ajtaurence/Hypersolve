@@ -4,7 +4,7 @@ use super::*;
 ///
 /// Supports elementwise operations.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub(crate) struct Vector<T, const N: usize>(pub [T; N]);
+pub(crate) struct Vector<T, const N: usize>(pub(crate) [T; N]);
 
 impl<T, const N: usize> std::fmt::Debug for Vector<T, N>
 where
@@ -186,23 +186,23 @@ impl_binary_op_for_vector!(Shr, shr, ShrAssign, shr_assign);
 impl_binary_op_for_vector!(Rem, rem, RemAssign, rem_assign);
 
 impl<T, const N: usize> Vector<T, N> {
-    pub fn from_elem(elem: T) -> Self
+    pub(crate) fn from_elem(elem: T) -> Self
     where
         T: Clone,
     {
         Vector::from_function(|_| elem.clone())
     }
 
-    pub const fn from_array(slice: [T; N]) -> Self {
+    pub(crate) const fn from_array(slice: [T; N]) -> Self {
         Self(slice)
     }
 
-    pub fn into_array(self) -> [T; N] {
+    pub(crate) fn into_array(self) -> [T; N] {
         self.0
     }
 
     /// Creates a vector with elements determined as a function of the index
-    pub fn from_function<F>(mut f: F) -> Self
+    pub(crate) fn from_function<F>(mut f: F) -> Self
     where
         F: FnMut(usize) -> T,
     {
@@ -223,7 +223,7 @@ impl<T, const N: usize> Vector<T, N> {
     }
 
     /// Maps a function over every element
-    pub fn map<F, U>(self, f: F) -> Vector<U, N>
+    pub(crate) fn map<F, U>(self, f: F) -> Vector<U, N>
     where
         F: FnMut(T) -> U,
     {
@@ -231,7 +231,7 @@ impl<T, const N: usize> Vector<T, N> {
     }
 
     /// The sum of the components of this vector
-    pub fn sum(self) -> T
+    pub(crate) fn sum(self) -> T
     where
         T: std::iter::Sum,
     {
@@ -239,7 +239,7 @@ impl<T, const N: usize> Vector<T, N> {
     }
 
     /// Dot product between self and another vector
-    pub fn dot<P, O>(self, rhs: Vector<P, N>) -> O
+    pub(crate) fn dot<P, O>(self, rhs: Vector<P, N>) -> O
     where
         T: std::ops::Mul<P, Output = O> + Clone,
         P: Clone,
@@ -249,7 +249,7 @@ impl<T, const N: usize> Vector<T, N> {
     }
 
     /// Mangnitude squared of the vector
-    pub fn magnitude_squared<O>(self) -> O
+    pub(crate) fn magnitude_squared<O>(self) -> O
     where
         T: std::ops::Mul<Output = O> + Clone,
         O: std::iter::Sum,
@@ -258,7 +258,7 @@ impl<T, const N: usize> Vector<T, N> {
     }
 
     /// Converts a vector of one type into a vector of another
-    pub fn cast<P>(self) -> Vector<P, N>
+    pub(crate) fn cast<P>(self) -> Vector<P, N>
     where
         P: From<T>,
     {
@@ -266,14 +266,14 @@ impl<T, const N: usize> Vector<T, N> {
     }
 
     /// Permutes the elements of the vector by the permutation
-    pub fn permute(self, permutation: groups::Permutation<N>) -> Self
+    pub(crate) fn permute(self, permutation: groups::Permutation<N>) -> Self
     where
         T: Clone,
     {
         let mut result = self.0.clone();
 
         for (i, value) in result.iter_mut().enumerate() {
-            *value = self.0[permutation.into_inner()[i]].clone();
+            *value = self.0[permutation.into_array()[i]].clone();
         }
         Vector(result)
     }
@@ -282,7 +282,7 @@ impl<T, const N: usize> Vector<T, N> {
 /// Dot product between two vectors.
 ///
 /// Only defined properly for real number components.
-pub fn dot<T, P, O, const N: usize>(a: Vector<T, N>, b: Vector<P, N>) -> O
+pub(crate) fn dot<T, P, O, const N: usize>(a: Vector<T, N>, b: Vector<P, N>) -> O
 where
     T: std::ops::Mul<P, Output = O> + Clone,
     P: Clone,
@@ -334,8 +334,8 @@ for_all_unique_pairs!(impl_vector_num_cast!(
     u8, i8, u16, i16, u32, i32, u64, i64, u128, i128, usize, isize, f32, f64
 ));
 
-pub type Vector3<T> = Vector<T, 3>;
-pub type Vector4<T> = Vector<T, 4>;
+pub(crate) type Vector3<T> = Vector<T, 3>;
+pub(crate) type Vector4<T> = Vector<T, 4>;
 
 #[cfg(test)]
 mod tests {

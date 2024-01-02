@@ -5,6 +5,7 @@ use std::hash::Hash;
 
 use crate::common::groups::{Identity, K4};
 use crate::common::math;
+use crate::puzzle::Axis;
 
 use super::*;
 
@@ -63,8 +64,8 @@ fn gen_c3_move_table() -> Box<[[u32; Phase2::N_MOVES]; N_C3_COORD_STATES as usiz
             permutation: Permutation::solved(),
         };
 
-        for (j, entry) in entry.iter_mut().enumerate().take(Phase2::N_MOVES) {
-            *entry = cube.apply_move(Move(j as u8)).orientation.c3_coord();
+        for (j, val) in entry.iter_mut().enumerate().take(Phase2::N_MOVES) {
+            *val = cube.apply_move(Move(j as u8)).orientation.c3_coord();
         }
     });
 
@@ -81,8 +82,8 @@ fn gen_io_move_table() -> Box<[[u16; Phase2::N_MOVES]; N_IO_COORD_STATES as usiz
             permutation: Permutation::from_coords(i as u16, 0, 0),
         };
 
-        for j in 0..(Phase2::N_MOVES as usize) {
-            entry[j] = cube.apply_move(Move(j as u8)).permutation.io_coord();
+        for (j, val) in entry.iter_mut().enumerate() {
+            *val = cube.apply_move(Move(j as u8)).permutation.io_coord();
         }
     });
 
@@ -106,8 +107,8 @@ fn gen_i_move_table() -> Box<[[u16; Phase3::N_MOVES]; N_I_COORD_STATES as usize]
             permutation: Permutation::from_coords(0, i as u16, o_coord),
         };
 
-        for j in 0..(Phase3::N_MOVES) {
-            entry[j] = cube.apply_move(Move(j as u8)).permutation.i_coord();
+        for (j, val) in entry.iter_mut().enumerate() {
+            *val = cube.apply_move(Move(j as u8)).permutation.i_coord();
         }
     });
 
@@ -131,8 +132,8 @@ fn gen_o_move_table() -> Box<[[u16; Phase3::N_MOVES]; N_O_COORD_STATES as usize]
             permutation: Permutation::from_coords(0, i_coord, i as u16),
         };
 
-        for j in 0..(Phase3::N_MOVES) {
-            entry[j] = cube.apply_move(Move(j as u8)).permutation.o_coord();
+        for (j, val) in entry.iter_mut().enumerate() {
+            *val = cube.apply_move(Move(j as u8)).permutation.o_coord();
         }
     });
 

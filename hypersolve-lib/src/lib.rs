@@ -4,5 +4,8 @@
 
 #[macro_use]
 mod common;
-pub mod puzzle;
-pub mod solver;
+mod puzzle;
+mod solver;
+
+pub use crate::puzzle::*;
+pub use crate::solver::*;

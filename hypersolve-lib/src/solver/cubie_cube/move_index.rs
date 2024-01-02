@@ -1,5 +1,7 @@
 use std::marker::PhantomData;
 
+use crate::puzzle::Axis;
+
 use super::*;
 
 /// Hypersolve move index
@@ -86,7 +88,7 @@ const_data!(
         // indexed by [phase][axis][move]
         let mut result = [[[Move(0); 92]; 4]; 3];
 
-        for phase in 0..3 {
+        for (phase, entry) in result.iter_mut().enumerate() {
             let n_moves = match phase {
                 0 => Phase1::N_MOVES,
                 1 => Phase2::N_MOVES,
@@ -99,7 +101,7 @@ const_data!(
                     .sorted_by_key(|m| (m.axis() as i8 - axis as i8).abs())
                     .enumerate()
                 {
-                    result[phase][axis as usize][i] = value;
+                    *entry[axis as usize][i] = *value;
                 }
             }
         }

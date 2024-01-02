@@ -7,7 +7,7 @@ use super::*;
 
 /// Describes the permutation of pieces
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Permutation(pub [u8; 15]);
+pub(crate) struct Permutation([u8; 15]);
 
 impl Default for Permutation {
     fn default() -> Self {
@@ -21,7 +21,7 @@ impl From<Cube> for Permutation {
         let inverse_map = cube
             .reposition()
             .pieces_except_last()
-            .map(|piece| piece.current_location().index() as u8);
+            .map(|piece| piece.current_location().index().0);
 
         // invert it to get the map we want
         Permutation(inverse_map).invert()
@@ -29,12 +29,12 @@ impl From<Cube> for Permutation {
 }
 
 impl Permutation {
-    pub fn into_inner(self) -> [u8; 15] {
+    pub(crate) fn into_inner(self) -> [u8; 15] {
         self.0
     }
 
     /// Permutes this permutation by another
-    pub fn permute(self, permutation: Permutation) -> Permutation {
+    pub(crate) fn permute(self, permutation: Permutation) -> Permutation {
         let mut map = [0; 15];
 
         for (i, &index) in permutation.into_inner().iter().enumerate() {
@@ -45,7 +45,7 @@ impl Permutation {
     }
 
     /// Returns the inverse of this permutation
-    pub fn inverse(&self) -> Self {
+    pub(crate) fn inverse(&self) -> Self {
         let mut inverse_map = [0; 15];
 
         for i in 0..15 {
@@ -56,18 +56,18 @@ impl Permutation {
     }
 
     /// Converts this permutation to its inverse
-    pub fn invert(mut self) -> Self {
+    pub(crate) fn invert(mut self) -> Self {
         self = self.inverse();
         self
     }
 
     /// Returns the solved permutation (identity)
-    pub fn solved() -> Permutation {
+    pub(crate) fn solved() -> Permutation {
         Permutation([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14])
     }
 
     /// Returns a number representing the IO separation state
-    pub fn io_coord(self) -> u16 {
+    pub(crate) fn io_coord(self) -> u16 {
         // Find the indices of `self.map` representing pieces on I
         let indices: [u8; 7] = self
             .into_inner()
@@ -86,7 +86,7 @@ impl Permutation {
     }
 
     /// Returns a number representing the permutation state of the I pieces
-    pub fn i_coord(self) -> u16 {
+    pub(crate) fn i_coord(self) -> u16 {
         let i_map: [u8; 8] = self
             .into_inner()
             .into_iter()
@@ -116,7 +116,7 @@ impl Permutation {
     }
 
     /// Returns a number representing the permutation state of the O pieces
-    pub fn o_coord(self) -> u16 {
+    pub(crate) fn o_coord(self) -> u16 {
         let o_map: [u8; 7] = self
             .into_inner()
             .into_iter()
@@ -147,7 +147,7 @@ impl Permutation {
     }
 
     /// Returns a permutation from its coordinates
-    pub fn from_coords(io_coord: u16, i_coord: u16, o_coord: u16) -> Permutation {
+    pub(crate) fn from_coords(io_coord: u16, i_coord: u16, o_coord: u16) -> Permutation {
         let mut map: [u8; 15] = [0; 15];
 
         let io_array = Self::coord_to_io_permutation(io_coord);
@@ -213,7 +213,7 @@ impl Permutation {
     }
 
     /// Returns the I permutation from a coordinate
-    pub fn coord_to_i_permutation(coord: u16) -> [u8; 8] {
+    pub(crate) fn coord_to_i_permutation(coord: u16) -> [u8; 8] {
         // it is common that the coord is 0 so skip the calculation in this case
         if coord == 0 {
             return [0, 1, 2, 3, 4, 5, 6, 7];
@@ -225,7 +225,7 @@ impl Permutation {
         let mut permutation = [0_u8; 8];
 
         for i in (0..8).rev() {
-            let left = if i != 0 && i != 1 {
+            let left = if !matches!(i, 0 | 1) {
                 (coord / (math::factorial(i) / 2) as u16) as u8
             } else {
                 coord as u8
@@ -259,7 +259,7 @@ impl Permutation {
     }
 
     /// Returns the O permutation from a coordinate
-    pub fn coord_to_o_permutation(coord: u16) -> [u8; 7] {
+    pub(crate) fn coord_to_o_permutation(coord: u16) -> [u8; 7] {
         // it is common that the coord is 0 so skip the calculation in this case
         if coord == 0 {
             return [0, 1, 2, 3, 4, 5, 6];

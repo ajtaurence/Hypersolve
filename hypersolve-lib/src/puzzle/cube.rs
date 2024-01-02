@@ -2,8 +2,21 @@ use itertools::Itertools;
 
 use super::*;
 
-/// High level cube representation capable of computing any move
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+/// Cube representation
+///
+/// # Examples
+/// ```
+/// use hypersolve_lib::*;
+///
+/// let cube: Cube = Cube::solved();
+///
+/// let r2: Twist = Twist::new(Face::R, TwistDirection::R2, Layer::This);
+///
+/// assert!(!cube.twist(r2).is_solved());
+/// assert!(cube.twists(vec![r2, r2]).is_solved());
+/// ```
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(test, derive(Debug))]
 pub struct Cube {
     pub(crate) pieces: Vector<Piece, 16>,
 }
@@ -41,8 +54,8 @@ impl Cube {
     /// Returns the solved cube
     pub fn solved() -> Self {
         Cube::new(
-            (0..16)
-                .map(|i| PieceLocation::from_index(i).solved_piece())
+            PieceLocation::iter_in_order()
+                .map(|loc| loc.solved_piece())
                 .collect_vec()
                 .try_into()
                 .unwrap(),
@@ -52,11 +65,6 @@ impl Cube {
     /// Returns whether the cube is solved
     pub fn is_solved(&self) -> bool {
         self.reposition() == Cube::solved()
-    }
-
-    /// Returns the cube index of this cube
-    pub fn index(&self) -> CubeIndex {
-        CubeIndex::from(*self)
     }
 
     /// Applies the twist to this cube
@@ -92,7 +100,7 @@ impl Cube {
         let (reference_index, &reference_piece) = self
             .pieces
             .iter()
-            .find_position(|piece| piece.current_location().index() == 15)
+            .find_position(|piece| piece.current_location() == PieceLocation::LAST)
             .unwrap();
 
         // get the axis permutation of the reference sticker
@@ -104,14 +112,14 @@ impl Cube {
         });
 
         // Signs representing the coordinate of the reference piece before
-        let reference_signs_before: Vector4<Sign> = PieceLocation::from_index(reference_index)
-            .solved_piece()
-            .faces
-            .cast();
+        let reference_signs_before: Vector4<Sign> =
+            PieceLocation::from_index(PieceLocationIndex(reference_index as u8))
+                .solved_piece()
+                .faces
+                .cast();
 
         // Signs representing the coordinate of the reference piece now
-        let reference_signs_now: Vector4<Sign> =
-            PieceLocation::from_index(15).solved_piece().faces.cast();
+        let reference_signs_now: Vector4<Sign> = PieceLocation::LAST.solved_piece().faces.cast();
 
         // Get the sign transformation that takes the reference piece from the location it was to the location now
         // Formula for the reference signs now is below:
@@ -122,10 +130,10 @@ impl Cube {
         // Now we apply the transformation to every piece and arrive at the permutation taking pieces to their new solved positions
         let piece_perm = groups::Permutation::from_array(
             groups::Permutation::IDENTITY
-                .into_inner()
-                .map(PieceLocation::from_index)
+                .into_array()
+                .map(|i| PieceLocation::from_index(PieceLocationIndex(i as u8)))
                 .map(|piece_loc| PieceLocation(piece_loc.0.permute(axis_perm) * transform_signs))
-                .map(|piece_loc| piece_loc.index()),
+                .map(|piece_loc| piece_loc.index().0 as usize),
         )
         .inverse();
 
@@ -142,7 +150,7 @@ mod test {
 
     #[test]
     fn test_is_solved() {
-        for twist in Twist::iter_all_twists() {
+        for twist in Twist::iter() {
             assert_eq!(
                 Cube::solved().twist(twist).is_solved(),
                 twist.is_cube_rotation()

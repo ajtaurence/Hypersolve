@@ -104,7 +104,7 @@ impl TryFrom<Permutation<3>> for C3 {
     type Error = String;
     fn try_from(value: Permutation<3>) -> Result<Self, Self::Error> {
         use C3::*;
-        match value.into_inner() {
+        match value.into_array() {
             [0, 1, 2] => Ok(E),
             [1, 2, 0] => Ok(A),
             [2, 0, 1] => Ok(AA),

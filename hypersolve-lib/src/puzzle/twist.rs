@@ -5,35 +5,67 @@ use strum::IntoEnumIterator;
 use super::*;
 
 /// Notation types for twists
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Default, strum_macros::Display)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Default, strum_macros::Display, Hash)]
 #[allow(clippy::upper_case_acronyms)]
 pub enum Notation {
+    /// Standard notation as described [here](https://hypercubing.xyz/notation/)
     #[default]
     Standard,
+    /// Notation used by [MC4D](https://superliminal.com/cube/)
     MC4D,
 }
 
-/// Errors for parsing MC4D twist format
+/// Errors for parsing twist notation
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[allow(clippy::upper_case_acronyms)]
+pub enum ParseTwistError {
+    #[error("standard twist notation error: {0}")]
+    Standard(ParseStandardTwistError),
+    #[error("MC4D twist notation error: {0}")]
+    MC4D(ParseMC4DTwistError),
+    #[error("unrecognized twist notation `{0}`")]
+    UnrecognizedNotation(String),
+}
+
+impl From<ParseStandardTwistError> for ParseTwistError {
+    fn from(value: ParseStandardTwistError) -> Self {
+        ParseTwistError::Standard(value)
+    }
+}
+impl From<ParseMC4DTwistError> for ParseTwistError {
+    fn from(value: ParseMC4DTwistError) -> Self {
+        ParseTwistError::MC4D(value)
+    }
+}
+
+/// Errors for parsing standard twist notation
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum ParseStandardTwistError {
+    #[error("not implemented")]
+    NotImplemented,
+}
+
+/// Errors for parsing MC4D twist notation
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum ParseMC4DTwistError {
     #[error("missing twist ID")]
-    MissingTwistId,
+    MissingId,
     #[error("invalid twist ID `{0}`")]
-    InvalidTwistId(String),
+    InvalidId(String),
     #[error("missing twist amount")]
-    MissingTwistAmount,
+    MissingAmount,
     #[error("invalid twist amount `{0}`")]
-    InvalidTwistAmount(String),
+    InvalidAmount(String),
     #[error("missing twist slice mask")]
-    MissingTwistSliceMask,
+    MissingSliceMask,
     #[error("invalid twist slice mask `{0}`")]
-    InvalidTwistSliceMask(String),
+    InvalidSliceMask(String),
     #[error("unexpected value `{0}`")]
     UnexpectedValue(String),
 }
 
 /// Layer(s) grabbed when twisting
-#[derive(Debug, Copy, Clone, PartialEq, Eq, num_enum::TryFromPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, num_enum::TryFromPrimitive, Hash)]
 #[repr(u8)]
 pub enum Layer {
     This = 1,
@@ -49,10 +81,25 @@ impl Layer {
             Self::Both => "{1-2}",
         }
     }
+
+    /// Returns the opposite of the selected layers
+    pub const fn opposite(&self) -> Option<Self> {
+        use Layer::*;
+        match self {
+            This => Some(Other),
+            Other => Some(This),
+            Both => None,
+        }
+    }
 }
 
-/// A twist that can be applied to a cube
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+/// A twist that can be applied to a [`Cube`]
+///
+/// Twists are defined by a face, direction, and a layer:
+/// * [`Face`] determines which face of the hypercube is gripped
+/// * [`TwistDirection`] determines how the 3D slice is twisted
+/// * [`Layer`] determines which layers are gripped
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Twist {
     pub face: Face,
     pub direction: TwistDirection,
@@ -60,9 +107,23 @@ pub struct Twist {
 }
 
 impl std::str::FromStr for Twist {
-    type Err = ParseMC4DTwistError;
+    type Err = ParseTwistError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Twist::from_mc4d_twist_string(s)
+        if s.chars()
+            .all(|c| c.is_ascii_punctuation() || c.is_ascii_digit())
+        {
+            // string is likely in MC4D notation
+            Ok(Twist::from_mc4d_twist_string(s)?)
+        } else if s
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c.is_ascii_punctuation())
+        {
+            // string is likely in standard notation
+            Ok(Twist::from_standard_twist_string(s)?)
+        } else {
+            // unknown notation
+            Err(ParseTwistError::UnrecognizedNotation(s.into()))
+        }
     }
 }
 
@@ -91,26 +152,44 @@ impl Twist {
         self.face.sign()
     }
 
+    /// Returns the twist that undoes this twist
+    ///
+    /// Not to be confused with [`reverse()`](#method.reverse)
+    pub const fn inverse(&self) -> Self {
+        Self::new(self.face, self.direction.reverse(), self.layer)
+    }
+
+    /// Returns the twist with the opposite layer mask
+    ///
+    /// Not to be confused with [`inverse()`](#method.inverse)
+    pub const fn reverse(&self) -> Option<Self> {
+        if let Some(new_layer) = self.layer.opposite() {
+            Some(Self::new(self.face, self.direction, new_layer))
+        } else {
+            None
+        }
+    }
+
+    /// Returns whether this twist is a cube rotation
+    pub const fn is_cube_rotation(&self) -> bool {
+        self.layer as u8 == Layer::Both as u8
+    }
+
     /// Returns the string for this move in the given notation
-    pub fn to_string(&self, notation: Notation) -> String {
+    pub fn to_notation(&self, notation: Notation) -> String {
         match notation {
             Notation::Standard => self.to_standard_string(),
             Notation::MC4D => self.to_mc4d_string(),
         }
     }
 
-    /// Returns the inverse of this twist
-    pub fn inverse(&self) -> Self {
-        Self::new(self.face, self.direction.rev(), self.layer)
+    /// Creates a twist from its standard notation
+    fn from_standard_twist_string(_s: &str) -> Result<Twist, ParseStandardTwistError> {
+        Err(ParseStandardTwistError::NotImplemented)
     }
 
-    /// Returns whether this twist is a cube rotation
-    pub fn is_cube_rotation(&self) -> bool {
-        self.layer == Layer::Both
-    }
-
-    /// Creates a twist from its MC4D string
-    pub fn from_mc4d_twist_string(s: &str) -> Result<Twist, ParseMC4DTwistError> {
+    /// Creates a twist from its MC4D notation
+    fn from_mc4d_twist_string(s: &str) -> Result<Twist, ParseMC4DTwistError> {
         use once_cell::sync::Lazy;
         use ParseMC4DTwistError::*;
 
@@ -119,43 +198,43 @@ impl Twist {
 
         let mut segments = s.split(',');
 
-        let twist_id_string = segments.next().ok_or(MissingTwistId)?.to_owned();
+        let twist_id_string = segments.next().ok_or(MissingId)?.to_owned();
 
         let twist_id = twist_id_string
             .parse::<usize>()
-            .or(Err(InvalidTwistId(twist_id_string.clone())))?;
+            .or(Err(InvalidId(twist_id_string.clone())))?;
 
         let (face, direction) = MC4D_TWISTS
             .get(twist_id)
-            .ok_or(InvalidTwistId(twist_id_string.clone()))?
-            .ok_or(InvalidTwistId(twist_id_string))?;
+            .ok_or(InvalidId(twist_id_string.clone()))?
+            .ok_or(InvalidId(twist_id_string))?;
 
-        let twist_amount_string = segments.next().ok_or(MissingTwistAmount)?.to_owned();
+        let twist_amount_string = segments.next().ok_or(MissingAmount)?.to_owned();
 
         let direction = match twist_amount_string
             .parse::<i8>()
-            .or(Err(InvalidTwistAmount(twist_amount_string.clone())))?
+            .or(Err(InvalidAmount(twist_amount_string.clone())))?
         {
             1 => direction,
             2 => direction
                 .double()
-                .ok_or(InvalidTwistAmount(twist_amount_string.clone()))?,
-            -1 => direction.rev(),
+                .ok_or(InvalidAmount(twist_amount_string.clone()))?,
+            -1 => direction.reverse(),
             -2 => direction
-                .rev()
+                .reverse()
                 .double()
-                .ok_or(InvalidTwistAmount(twist_amount_string.clone()))?,
-            _ => return Err(ParseMC4DTwistError::InvalidTwistAmount(twist_amount_string)),
+                .ok_or(InvalidAmount(twist_amount_string.clone()))?,
+            _ => return Err(ParseMC4DTwistError::InvalidAmount(twist_amount_string)),
         };
 
-        let slice_mask_string = segments.next().ok_or(MissingTwistSliceMask)?.to_owned();
+        let slice_mask_string = segments.next().ok_or(MissingSliceMask)?.to_owned();
 
         let layer = Layer::try_from_primitive(
             slice_mask_string
                 .parse()
-                .or(Err(InvalidTwistSliceMask(slice_mask_string.clone())))?,
+                .or(Err(InvalidSliceMask(slice_mask_string.clone())))?,
         )
-        .or(Err(InvalidTwistSliceMask(slice_mask_string)))?;
+        .or(Err(InvalidSliceMask(slice_mask_string)))?;
 
         let next_string = segments.next();
         if let Some(value) = next_string {
@@ -164,8 +243,14 @@ impl Twist {
         Ok(Twist::new(face, direction, layer))
     }
 
+    /// Iterates over all possible twists (excluding cube rotations)
+    pub fn iter() -> impl Iterator<Item = Twist> {
+        itertools::iproduct!(Face::iter(), TwistDirection::iter())
+            .map(|(face, direction)| Twist::new(face, direction, Layer::This))
+    }
+
     /// Returns the MC4D string for this twist
-    pub fn to_mc4d_string(mut self: Twist) -> String {
+    fn to_mc4d_string(mut self: Twist) -> String {
         use once_cell::sync::Lazy;
         use std::collections::HashMap;
 
@@ -188,9 +273,9 @@ impl Twist {
     }
 
     /// Returns the standard string for this twist    
-    pub fn to_standard_string(self) -> String {
+    fn to_standard_string(self) -> String {
         if self.layer == Layer::Other {
-            return Twist::new(self.face.opposite(), self.direction.rev(), Layer::This)
+            return Twist::new(self.face.opposite(), self.direction.reverse(), Layer::This)
                 .to_standard_string();
         }
 
@@ -281,17 +366,12 @@ impl Twist {
             piece_loc_signs.dot(basis3)
         )
     }
-
-    /// Iterates over all possible twists
-    pub fn iter_all_twists() -> impl Iterator<Item = Twist> {
-        itertools::iproduct!(Face::iter(), TwistDirection::iter())
-            .map(|(face, direction)| Twist::new(face, direction, Layer::This))
-    }
 }
 
 /// 3D Twist directions
 ///
 /// Taken from [Hyperspeedcube](https://github.com/HactarCE/Hyperspeedcube/blob/9ef4d7f7c4a273b4ffb723e65e4539593c156322/src/puzzle/rubiks_4d.rs#L967C1-L1039C2)
+/// with some modifications
 #[derive(
     num_enum::FromPrimitive,
     Debug,
@@ -421,22 +501,62 @@ impl TwistDirection {
     }
 
     /// Returns the opposite twist direction
-    pub fn rev(self) -> Self {
-        Self::from(self as u8 ^ 1)
-    }
-
-    /// Returns half of the twist direction if possible
-    pub fn half(self) -> Option<Self> {
+    pub const fn reverse(self) -> Self {
         use TwistDirection::*;
 
         match self {
-            R2 | L2 | U2 | D2 | F2 | B2 => Some(Self::from(self as u8 - 6)),
+            R => L,
+            L => R,
+            U => D,
+            D => U,
+            F => B,
+            B => F,
+            R2 => L2,
+            L2 => R2,
+            U2 => D2,
+            D2 => U2,
+            F2 => B2,
+            B2 => F2,
+            UF => DB,
+            DB => UF,
+            UR => DL,
+            DL => UR,
+            FR => BL,
+            BL => FR,
+            DF => UB,
+            UB => DF,
+            UL => DR,
+            DR => UL,
+            BR => FL,
+            FL => BR,
+            UFR => DBL,
+            DBL => UFR,
+            UFL => DBR,
+            DBR => UFL,
+            DFR => UBL,
+            UBL => DFR,
+            UBR => DFL,
+            DFL => UBR,
+        }
+    }
+
+    /// Returns half of the twist direction if possible
+    pub const fn half(self) -> Option<Self> {
+        use TwistDirection::*;
+
+        match self {
+            R2 => Some(R),
+            L2 => Some(L),
+            U2 => Some(U),
+            D2 => Some(D),
+            F2 => Some(F),
+            B2 => Some(B),
             _ => None,
         }
     }
 
     /// Returns whether the twist direction is a dobule twist direction
-    pub fn is_double(self) -> bool {
+    pub const fn is_double(self) -> bool {
         use TwistDirection::*;
 
         matches!(self, R2 | L2 | U2 | D2 | F2 | B2)
@@ -444,18 +564,23 @@ impl TwistDirection {
 
     /// Returns the twist direction equivalent to performing this twist direction twice
     /// or `None` if the resulting twist direction is to do nothing
-    pub fn double(self) -> Option<Self> {
+    pub const fn double(self) -> Option<Self> {
         use TwistDirection::*;
 
         match self {
-            R | L | U | D | F | B => Some(Self::from(self as u8 + 6)),
-            R2 | L2 | U2 | D2 | F2 | B2 => None,
-            UF | DB | UR | DL | FR | BL | DF | UB | UL | DR | BR | FL => None,
-            UFR | DBL | UFL | DBR | DFR | UBL | UBR | DFL => Some(self.rev()),
+            R => Some(R2),
+            L => Some(L2),
+            U => Some(U2),
+            D => Some(D2),
+            F => Some(F2),
+            B => Some(B2),
+            R2 | L2 | U2 | D2 | F2 | B2 | UF | DB | UR | DL | FR | BL | DF | UB | UL | DR | BR
+            | FL => None,
+            UFR | DBL | UFL | DBR | DFR | UBL | UBR | DFL => Some(self.reverse()),
         }
     }
 
-    fn from_signs_within_face(v: Vector3<i32>) -> Option<Self> {
+    const fn from_signs_within_face(v: Vector3<i32>) -> Option<Self> {
         use TwistDirection::*;
 
         match v.0 {
@@ -545,13 +670,13 @@ impl TwistSequence {
     pub fn to_notation(&self, notation: Notation) -> String {
         self.0
             .iter()
-            .map(|twist| twist.to_string(notation))
+            .map(|twist| twist.to_notation(notation))
             .join(" ")
     }
 }
 
 impl std::str::FromStr for TwistSequence {
-    type Err = ParseMC4DTwistError;
+    type Err = ParseTwistError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let twists = s.split_whitespace();

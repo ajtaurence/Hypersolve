@@ -1,6 +1,8 @@
+use super::*;
+
 /// An index representing a specific cube state
 ///
-/// The index is effectively an integer and can be converted to and from `u128`.
+/// The index is effectively an integer and can be converted to and from [`u128`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CubeIndex(pub(crate) u128);
 
@@ -25,7 +27,7 @@ pub enum CubeIndexError {
 impl TryFrom<u128> for CubeIndex {
     type Error = CubeIndexError;
     fn try_from(value: u128) -> Result<Self, Self::Error> {
-        if value < crate::solver::N_CUBE_STATES {
+        if value < N_CUBE_STATES {
             Ok(CubeIndex(value))
         } else {
             Err(CubeIndexError::InvalidIndex(value))

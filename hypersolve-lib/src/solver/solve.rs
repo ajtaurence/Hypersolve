@@ -269,6 +269,20 @@ pub fn fast_solve(
 }
 
 /// Generates a scramble for a cube
+///
+/// # Example
+/// ```no_run
+/// use hypersolve_lib::*;
+///
+/// // Get a cube index
+/// let cube: CubeIndex = CubeIndex::try_from(1808977308969486521796547338).unwrap();
+///
+/// // Generate a scramble for this cube
+/// let scramble: TwistSequence = find_scramble(cube);
+///
+/// // Print the scramble in standard notation
+/// println!("{}", scramble.to_notation(Notation::Standard));
+/// ```
 pub fn find_scramble(cube: impl Into<CubeIndex>) -> TwistSequence {
     let mut cube = CubieCube::from(cube.into());
 

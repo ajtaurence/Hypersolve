@@ -7,5 +7,5 @@ pub(super) mod math;
 mod vector;
 mod parity;
 
-pub(super) use parity::*;
-pub(super) use vector::*;
+pub(super) use parity::Parity;
+pub(super) use vector::{Vector, Vector3, Vector4};

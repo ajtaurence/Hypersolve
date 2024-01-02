@@ -44,4 +44,5 @@ harness = false
 [features]
 default = []
 progress = ["indicatif"]
+# Generates data files at runtime to be loaded as const when feature is disabled
 gen-const-data = []

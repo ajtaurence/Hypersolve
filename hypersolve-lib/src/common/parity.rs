@@ -16,10 +16,12 @@ impl std::ops::Mul for Parity {
 }
 
 impl Parity {
+    /// Returns whether the parity is odd
     pub(crate) fn is_odd(&self) -> bool {
         matches!(self, Self::Odd)
     }
 
+    /// Returns the opposite parity
     pub(crate) fn opposite(&self) -> Self {
         match self {
             Self::Even => Self::Odd,

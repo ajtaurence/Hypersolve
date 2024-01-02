@@ -1,4 +1,4 @@
-use crate::puzzle::{Cube, CubeIndex};
+use crate::puzzle::Cube;
 use crate::solver::node_cube::*;
 
 use super::*;
@@ -16,7 +16,7 @@ impl From<Cube> for CubeIndex {
     }
 }
 
-impl From<CubieCube> for crate::puzzle::CubeIndex {
+impl From<CubieCube> for CubeIndex {
     fn from(value: CubieCube) -> Self {
         let phase1_index = Phase1Node::from(value).get_index() as u128;
         let phase2_index = Phase2Node::from(value).get_index() as u128;
@@ -30,8 +30,8 @@ impl From<CubieCube> for crate::puzzle::CubeIndex {
     }
 }
 
-impl From<crate::puzzle::CubeIndex> for CubieCube {
-    fn from(value: crate::puzzle::CubeIndex) -> Self {
+impl From<CubeIndex> for CubieCube {
+    fn from(value: CubeIndex) -> Self {
         let mut index = value.0;
 
         let phase3_node =

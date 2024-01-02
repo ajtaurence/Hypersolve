@@ -37,7 +37,7 @@ impl<const N: usize> std::ops::Mul for Permutation<N> {
 impl<const N: usize> std::ops::Index<usize> for Permutation<N> {
     type Output = usize;
     fn index(&self, index: usize) -> &Self::Output {
-        &self.inner()[index]
+        &self.0[index]
     }
 }
 
@@ -119,13 +119,8 @@ impl<const N: usize> Permutation<N> {
     };
 
     /// Converts the permutation into its array representation
-    pub(crate) const fn into_inner(self) -> [usize; N] {
+    pub(crate) const fn into_array(self) -> [usize; N] {
         self.0
-    }
-
-    /// Returns a reference to the array representation
-    pub(crate) const fn inner(&self) -> &[usize; N] {
-        &self.0
     }
 
     /// Creates a permutation from the given array
@@ -134,7 +129,7 @@ impl<const N: usize> Permutation<N> {
     ///
     /// Panics if the array is not a valid permutation
     pub(crate) fn from_array(array: [usize; N]) -> Self {
-        array.try_into().expect("Array is not a valid permutation")
+        array.try_into().expect("array is not a valid permutation")
     }
 
     /// Creates a permutation from the given array without checking for validity
@@ -152,10 +147,10 @@ impl<const N: usize> Permutation<N> {
 
     /// Returns whether the permutation is valid
     fn is_valid(&self) -> bool {
-        let mut sorted_array = self.into_inner();
+        let mut sorted_array = self.into_array();
         sorted_array.sort_unstable();
 
-        sorted_array == Self::IDENTITY.into_inner()
+        sorted_array == Self::IDENTITY.into_array()
     }
 
     /// Applies the given permutation to self: `other * self`

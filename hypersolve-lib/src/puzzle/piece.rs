@@ -150,7 +150,7 @@ impl Piece {
 
 /// Describes locations that pieces can be in rather than pieces themselves
 #[derive(Copy, Clone, PartialEq, Eq, Default)]
-pub(crate) struct PieceLocation(pub Vector4<Sign>);
+pub(crate) struct PieceLocation(pub(crate) Vector4<Sign>);
 
 impl From<Piece> for PieceLocation {
     fn from(piece: Piece) -> Self {
@@ -201,6 +201,15 @@ impl std::ops::IndexMut<Axis> for PieceLocation {
 }
 
 impl PieceLocation {
+    /// The last piece location
+    pub(crate) const LAST: Self = Self::from_index(PieceLocationIndex::LAST);
+
+    /// Iterates over all piece locations in order of their index
+    pub(crate) fn iter_in_order(
+    ) -> impl Iterator<Item = Self> + DoubleEndedIterator + ExactSizeIterator {
+        PieceLocationIndex::iter().map(Self::from_index)
+    }
+
     /// Returns the piece that is solved in this location
     pub(crate) const fn solved_piece(&self) -> Piece {
         Piece::new(Vector4::from_array([
@@ -216,6 +225,30 @@ impl PieceLocation {
         PieceLocation(Vector::<_, 4>([x, y, z, w]))
     }
 
+    pub(crate) const fn index(&self) -> PieceLocationIndex {
+        // Toggle the w bit to make face I get indexed before O
+        PieceLocationIndex(
+            (self.0 .0[0].to_binary() * 2_usize.pow(0)
+                + self.0 .0[1].to_binary() * 2_usize.pow(1)
+                + self.0 .0[2].to_binary() * 2_usize.pow(2)
+                + (self.0 .0[3].to_binary() ^ 1) * 2_usize.pow(3)) as u8,
+        )
+    }
+
+    pub(crate) const fn from_index(index: PieceLocationIndex) -> Self {
+        // Toggle the w bit to make face I get indexed before O
+        let w = (index.0 >> 3 & 0b00000001) ^ 1;
+        let z = index.0 >> 2 & 0b00000001;
+        let y = index.0 >> 1 & 0b00000001;
+        let x = index.0 & 0b00000001;
+        PieceLocation::from_signs(
+            Sign::from_binary(x as usize),
+            Sign::from_binary(y as usize),
+            Sign::from_binary(z as usize),
+            Sign::from_binary(w as usize),
+        )
+    }
+
     /// Gets the parity of this piece location
     pub(crate) fn parity(&self) -> Parity {
         match self.0[0] * self.0[1] * self.0[2] * self.0[3] {
@@ -224,34 +257,24 @@ impl PieceLocation {
         }
     }
 
-    /// Gets the index of this location
-    pub(crate) const fn index(self) -> usize {
-        // Toggle the w bit to make face I get indexed before O
-        self.0 .0[0].to_binary() * 2_usize.pow(0)
-            + self.0 .0[1].to_binary() * 2_usize.pow(1)
-            + self.0 .0[2].to_binary() * 2_usize.pow(2)
-            + (self.0 .0[3].to_binary() ^ 1) * 2_usize.pow(3)
-    }
-
-    /// Gets the location from this index
-    pub(crate) const fn from_index(index: usize) -> PieceLocation {
-        // Toggle the w bit to make face I get indexed before O
-        let w = (index >> 3 & 0b00000001) ^ 1;
-        let z = index >> 2 & 0b00000001;
-        let y = index >> 1 & 0b00000001;
-        let x = index & 0b00000001;
-        PieceLocation::from_signs(
-            Sign::from_binary(x),
-            Sign::from_binary(y),
-            Sign::from_binary(z),
-            Sign::from_binary(w),
-        )
-    }
-
     /// Returns whether this piece location is affected by the given twist
     #[cfg(feature = "gen-const-data")]
     pub(crate) fn is_affected_by_twist(self, twist: Twist) -> bool {
         self.solved_piece().is_affected_by_twist(twist)
+    }
+}
+
+/// An index for a piece location
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct PieceLocationIndex(pub(crate) u8);
+
+impl PieceLocationIndex {
+    /// The last piece location index
+    pub(crate) const LAST: Self = Self(15);
+
+    /// Iterates over all piece location indecies
+    fn iter() -> impl Iterator<Item = Self> + DoubleEndedIterator + ExactSizeIterator {
+        (0..=Self::LAST.0).map(PieceLocationIndex)
     }
 }
 
@@ -262,7 +285,10 @@ mod tests {
     #[test]
     fn test_piece_location_index() {
         for i in 0..16 {
-            assert_eq!(PieceLocation::from_index(i).index(), i)
+            assert_eq!(
+                PieceLocation::from_index(PieceLocationIndex(i)).index(),
+                PieceLocationIndex(i)
+            )
         }
     }
 
@@ -270,18 +296,18 @@ mod tests {
     fn test_piece_current_location() {
         for i in 0..16 {
             assert_eq!(
-                PieceLocation::from_index(i)
+                PieceLocation::from_index(PieceLocationIndex(i))
                     .solved_piece()
                     .current_location(),
-                PieceLocation::from_index(i)
+                PieceLocation::from_index(PieceLocationIndex(i))
             )
         }
 
         assert_ne!(
-            PieceLocation::from_index(6)
+            PieceLocation::from_index(PieceLocationIndex(6))
                 .solved_piece()
                 .current_location(),
-            PieceLocation::from_index(1)
+            PieceLocation::from_index(PieceLocationIndex(1))
         )
     }
 }
