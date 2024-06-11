@@ -1,8 +1,6 @@
 use super::*;
 
 /// An index representing a specific cube state
-///
-/// The index is effectively an integer and can be converted to and from [`u128`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CubeIndex(pub(crate) u128);
 

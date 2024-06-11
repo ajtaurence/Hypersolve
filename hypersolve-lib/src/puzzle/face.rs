@@ -175,6 +175,21 @@ impl Face {
         }
     }
 
+    /// Returns the face from its uppercase symbol
+    pub(crate) fn from_symbol_upper_str(s: &str) -> Option<Self> {
+        match s {
+            "R" => Some(Face::R),
+            "L" => Some(Face::L),
+            "U" => Some(Face::U),
+            "D" => Some(Face::D),
+            "F" => Some(Face::F),
+            "B" => Some(Face::B),
+            "O" => Some(Face::O),
+            "I" => Some(Face::I),
+            _ => None,
+        }
+    }
+
     pub(crate) fn basis_faces(self) -> [Face; 3] {
         use Axis::*;
 

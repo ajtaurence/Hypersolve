@@ -3,6 +3,7 @@
 mod axis;
 mod cube;
 mod face;
+mod notation;
 mod piece;
 mod sign;
 mod twist;
@@ -17,7 +18,5 @@ pub(super) use sign::*;
 pub use axis::Axis;
 pub use cube::Cube;
 pub use face::Face;
-pub use twist::{
-    Layer, Notation, ParseMC4DTwistError, ParseStandardTwistError, ParseTwistError, Twist,
-    TwistDirection, TwistSequence,
-};
+pub use notation::{Notation, ParseTwistError};
+pub use twist::{Layer, Twist, TwistDirection, TwistSequence};

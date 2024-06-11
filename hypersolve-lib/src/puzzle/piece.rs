@@ -125,7 +125,27 @@ impl Piece {
     pub(crate) fn twist(mut self, twist: Twist) -> Self {
         let [basis_x, basis_y, basis_z] = twist.face.basis_faces();
 
-        let mut chars = twist.direction.symbol_xyz().chars().peekable();
+        let mut chars = if twist.face == Face::O {
+            // The O face is backwards so we have to twist in the opposite direction
+            // This is analogous to how the F face of a 3D cube is backwards in this
+            // projection because we are looking at it from the other side
+            //       _______________
+            //       |\           /|
+            //       | \    U    / |
+            //       |  +-------+  |
+            //       |  |   B   |  |
+            //       |L |       | R|
+            //       |  +-------+  |
+            //       | /    D    \ |
+            //       |/___________\|
+
+            twist.direction.reverse()
+        } else {
+            twist.direction
+        }
+        .symbol_xyz()
+        .chars()
+        .peekable();
 
         loop {
             let [mut a, mut b] = match chars.next() {
