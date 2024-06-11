@@ -273,7 +273,7 @@ impl<T, const N: usize> Vector<T, N> {
         let mut result = self.0.clone();
 
         for (i, value) in result.iter_mut().enumerate() {
-            *value = self.0[permutation.into_array()[i]].clone();
+            *value = self.0[permutation.into_array()[i] as usize].clone();
         }
         Vector(result)
     }

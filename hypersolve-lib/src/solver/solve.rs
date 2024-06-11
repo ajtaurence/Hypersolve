@@ -281,7 +281,7 @@ pub fn fast_solve(
 /// let scramble: TwistSequence = find_scramble(cube);
 ///
 /// // Print the scramble in standard notation
-/// println!("{}", scramble.to_notation(Notation::Standard));
+/// println!("{}", Notation::Standard.format_twist_sequence(&scramble));
 /// ```
 pub fn find_scramble(cube: impl Into<CubeIndex>) -> TwistSequence {
     let mut cube = CubieCube::from(cube.into());

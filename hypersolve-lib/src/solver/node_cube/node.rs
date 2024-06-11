@@ -236,6 +236,8 @@ impl Node for Phase1Node {
     }
 
     fn apply_move(self, move_index: Move) -> Self {
+        unsafe { assert_unchecked!(move_index.as_usize() < Phase1::N_MOVES) };
+
         let perm = PERM_MOVE_TABLE[move_index.as_usize()];
         let orien = A4_MOVE_TABLE[move_index.as_usize()];
         Self {
@@ -303,6 +305,12 @@ impl Node for Phase2Node {
 
     fn apply_move(self, move_index: Move) -> Self {
         load_or_generate_data!(static C3_MOVE_TABLE: Box<[[u32; Phase2::N_MOVES]; N_C3_COORD_STATES as usize]> = gen_c3_move_table(), "c3.move");
+
+        unsafe {
+            assert_unchecked!(move_index.as_usize() < Phase2::N_MOVES);
+            assert_unchecked!(self.c3_coord < N_C3_COORD_STATES);
+            assert_unchecked!(self.io_coord < N_IO_COORD_STATES);
+        }
 
         let c3_coord = C3_MOVE_TABLE[self.c3_coord as usize][move_index.as_usize()];
         let io_coord = IO_MOVE_TABLE[self.io_coord as usize][move_index.as_usize()];
@@ -381,6 +389,12 @@ impl Node for Phase3Node {
     }
 
     fn apply_move(self, move_index: Move) -> Self {
+        unsafe {
+            assert_unchecked!(move_index.as_usize() < Phase3::N_MOVES);
+            assert_unchecked!(self.i_coord < N_I_COORD_STATES);
+            assert_unchecked!(self.o_coord < N_O_COORD_STATES);
+        }
+
         let i_coord = I_MOVE_TABLE[self.i_coord as usize][move_index.as_usize()];
         let o_coord = O_MOVE_TABLE[self.o_coord as usize][move_index.as_usize()];
         Self {

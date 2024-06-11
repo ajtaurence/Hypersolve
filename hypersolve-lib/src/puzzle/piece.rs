@@ -77,7 +77,7 @@ impl Piece {
 
     /// Returns the axis permutation of the piece in the "is replaced by format"
     pub(crate) fn to_axis_permutation(self) -> groups::Permutation<4> {
-        groups::Permutation::from_array(self.faces.map(|f| f.axis() as usize).0).inverse()
+        groups::Permutation::from_array(self.faces.map(|f| f.axis() as u8).0).inverse()
     }
 
     pub(crate) fn current_location(self) -> PieceLocation {

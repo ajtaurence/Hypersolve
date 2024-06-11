@@ -4,7 +4,7 @@ use num_enum::TryFromPrimitive;
 use super::*;
 
 /// Notation types for twists
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Default, strum_macros::Display, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Default, strum::Display, Hash)]
 #[allow(clippy::upper_case_acronyms)]
 pub enum Notation {
     /// Standard notation as described [here](https://hypercubing.xyz/notation/)

@@ -95,7 +95,7 @@ impl Permutation {
             .try_into()
             .unwrap();
 
-        let mut i_coord = if groups::Permutation::from_array_unchecked(i_map.map(|i| i as usize))
+        let mut i_coord = if groups::Permutation::from_array_unchecked(i_map)
             .parity()
             .is_odd()
         {
@@ -126,7 +126,7 @@ impl Permutation {
             .try_into()
             .unwrap();
 
-        let mut o_coord = if groups::Permutation::from_array_unchecked(o_map.map(|i| i as usize))
+        let mut o_coord = if groups::Permutation::from_array_unchecked(o_map)
             .parity()
             .is_odd()
         {
@@ -160,16 +160,20 @@ impl Permutation {
         let mut o_index: usize = 0;
         for i in 0..15 {
             if io_array[i] {
+                unsafe { assert_unchecked!(o_index < o_array.len()) };
+
                 map[i] = o_array[o_index] + 8;
                 o_index += 1;
             } else {
+                unsafe { assert_unchecked!(i_index < i_array.len()) };
+
                 map[i] = i_array[i_index];
                 i_index += 1;
             }
         }
 
         // Fix the total permutation parity by swapping the parity index of the I coordinate if needed
-        if groups::Permutation::<15>::from_array(map.map(|i| i as usize))
+        if groups::Permutation::<15>::from_array_unchecked(map)
             .parity()
             .is_odd()
         {
@@ -187,10 +191,11 @@ impl Permutation {
     fn coord_to_io_permutation(coord: u16) -> [bool; 15] {
         // It is common that the coord is 0 so skip the calculation in this case
         if coord == 0 {
-            let mut result = [false; 15];
-            for value in result.iter_mut().skip(8) {
-                *value = true;
-            }
+            let result = [
+                false, false, false, false, false, false, false, false, true, true, true, true,
+                true, true, true,
+            ];
+
             return result;
         }
 
@@ -226,6 +231,8 @@ impl Permutation {
 
         for i in (0..8).rev() {
             let left = if !matches!(i, 0 | 1) {
+                unsafe { assert_unchecked!((math::factorial(i) / 2) <= u16::MAX as u64) };
+
                 (coord / (math::factorial(i) / 2) as u16) as u8
             } else {
                 coord as u8
@@ -247,7 +254,7 @@ impl Permutation {
             coord -= left as u16 * (math::factorial(i) / 2) as u16;
         }
 
-        if groups::Permutation::from_array_unchecked(permutation.map(|i| i as usize))
+        if groups::Permutation::from_array_unchecked(permutation)
             .parity()
             .is_odd()
             != is_odd
@@ -293,7 +300,7 @@ impl Permutation {
             coord -= left as u16 * (math::factorial(i) / 2) as u16;
         }
 
-        if groups::Permutation::from_array_unchecked(permutation.map(|i| i as usize))
+        if groups::Permutation::from_array_unchecked(permutation)
             .parity()
             .is_odd()
             != is_odd

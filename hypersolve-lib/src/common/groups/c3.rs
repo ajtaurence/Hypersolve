@@ -2,14 +2,7 @@ use super::*;
 
 /// Elements of the [cyclic group of order 3](http://escarbille.free.fr/group/?g=3_1)
 #[derive(
-    Debug,
-    Default,
-    Copy,
-    Clone,
-    PartialEq,
-    Eq,
-    enum_primitive_derive::Primitive,
-    strum_macros::EnumIter,
+    Debug, Default, Copy, Clone, PartialEq, Eq, enum_primitive_derive::Primitive, strum::EnumIter,
 )]
 #[repr(u8)]
 pub(crate) enum C3 {
@@ -32,24 +25,6 @@ impl BinaryOp for C3 {
             (A, A) => AA,
             (AA, A) | (A, AA) => E,
         }
-    }
-}
-
-impl Inverse for C3 {
-    fn inverse(&self) -> Self {
-        use C3::*;
-        match self {
-            E => E,
-            A => AA,
-            AA => A,
-        }
-    }
-}
-
-impl Group for C3 {
-    fn iter_elements() -> Box<dyn std::iter::Iterator<Item = Self>> {
-        use strum::IntoEnumIterator;
-        Box::new(C3::iter())
     }
 }
 
@@ -110,15 +85,5 @@ impl TryFrom<Permutation<3>> for C3 {
             [2, 0, 1] => Ok(AA),
             _ => Err(format!("{} is not a C3 group element", value)),
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn valid_group() {
-        assert!(C3::is_valid_group())
     }
 }

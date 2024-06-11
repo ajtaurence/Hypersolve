@@ -59,6 +59,7 @@ impl<T: Identity + Copy + PartialEq> Orientation<T> {
         let mut result = [T::IDENTITY; 15];
 
         for (i, &index) in permutation.into_inner().iter().enumerate() {
+            unsafe { assert_unchecked!(index < 15) };
             result[i] = self.state[index as usize];
         }
 

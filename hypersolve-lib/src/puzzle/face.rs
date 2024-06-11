@@ -10,9 +10,9 @@ use super::*;
     PartialOrd,
     Ord,
     Hash,
-    strum_macros::EnumIter,
-    strum_macros::EnumCount,
-    strum_macros::EnumString,
+    strum::EnumIter,
+    strum::EnumCount,
+    strum::EnumString,
 )]
 #[repr(u8)]
 pub enum Face {

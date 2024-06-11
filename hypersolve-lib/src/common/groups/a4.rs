@@ -1,7 +1,7 @@
 use super::*;
 
 /// Elements of the [A4 group](http://escarbille.free.fr/group/?g=12_3a)
-#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Hash, strum_macros::EnumIter)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Hash, strum::EnumIter)]
 #[repr(u8)]
 pub(crate) enum A4 {
     #[default]
@@ -110,33 +110,6 @@ impl Identity for A4 {
     const IDENTITY: Self = A4::E;
 }
 
-impl Inverse for A4 {
-    fn inverse(&self) -> Self {
-        use A4::*;
-        match self {
-            E => E,
-            R1 => R2,
-            R2 => R1,
-            U1 => U1,
-            R8 => R3,
-            R6 => R4,
-            U2 => U2,
-            R5 => R7,
-            R3 => R8,
-            U3 => U3,
-            R4 => R6,
-            R7 => R5,
-        }
-    }
-}
-
-impl Group for A4 {
-    fn iter_elements() -> Box<dyn std::iter::Iterator<Item = Self>> {
-        use strum::IntoEnumIterator;
-        Box::new(A4::iter())
-    }
-}
-
 impl std::ops::Mul for A4 {
     type Output = A4;
     fn mul(self, rhs: Self) -> Self::Output {
@@ -156,10 +129,5 @@ mod tests {
         assert_eq!(A4::R2 * A4::R5, A4::U3);
         assert_eq!(A4::U3 * A4::R3, A4::R6);
         assert_eq!(A4::E * A4::R8, A4::R8);
-    }
-
-    #[test]
-    fn valid_group() {
-        assert!(A4::is_valid_group())
     }
 }

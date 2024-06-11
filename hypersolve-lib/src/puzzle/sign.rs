@@ -1,15 +1,5 @@
 /// An enum representing a positive or negative sign
-#[derive(
-    Debug,
-    Default,
-    Copy,
-    Clone,
-    PartialEq,
-    Eq,
-    strum_macros::EnumIter,
-    strum_macros::EnumCount,
-    Hash,
-)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, strum::EnumIter, strum::EnumCount, Hash)]
 #[repr(i8)]
 pub enum Sign {
     #[default]
@@ -102,17 +92,7 @@ impl Sign {
 }
 
 /// An enum representing a positive sign, negative sign, or zero
-#[derive(
-    Debug,
-    Default,
-    Copy,
-    Clone,
-    PartialEq,
-    Eq,
-    strum_macros::EnumIter,
-    strum_macros::EnumCount,
-    Hash,
-)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, strum::EnumIter, strum::EnumCount, Hash)]
 #[repr(i8)]
 pub(crate) enum ZeroOrSign {
     #[default]

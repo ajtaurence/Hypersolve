@@ -2,7 +2,7 @@ use super::*;
 
 /// Elements of the [Klein group](http://escarbille.free.fr/group/?g=4_2a)
 #[derive(
-    Debug, Default, Copy, Clone, PartialEq, enum_primitive_derive::Primitive, strum_macros::EnumIter,
+    Debug, Default, Copy, Clone, PartialEq, enum_primitive_derive::Primitive, strum::EnumIter,
 )]
 #[repr(u8)]
 pub(crate) enum K4 {
@@ -89,34 +89,5 @@ impl BinaryOp for K4 {
             (U1, U3) | (U3, U1) => U2,
             (U2, U3) | (U3, U2) => U1,
         }
-    }
-}
-
-impl Inverse for K4 {
-    fn inverse(&self) -> Self {
-        use K4::*;
-        match self {
-            E => E,
-            U1 => U1,
-            U2 => U2,
-            U3 => U3,
-        }
-    }
-}
-
-impl Group for K4 {
-    fn iter_elements() -> Box<dyn std::iter::Iterator<Item = Self>> {
-        use strum::IntoEnumIterator;
-        Box::new(K4::iter())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn valid_group() {
-        assert!(K4::is_valid_group())
     }
 }

@@ -1,3 +1,15 @@
+/// Asserts to the compiler that a condition is always true, allowing it to skip checking it
+macro_rules! assert_unchecked {
+    ($cond:expr) => {
+        if !($cond) {
+            if cfg!(debug_assertions) {
+                panic!("unchecked assertion failed")
+            }
+            std::hint::unreachable_unchecked()
+        }
+    };
+}
+
 /// Loads the bytes from a file or generates the data file by serializing `value` using rkyv
 pub(crate) fn load_or_generate_bytes<T, F: FnOnce() -> T>(f: F, filename: &str) -> Vec<u8>
 where

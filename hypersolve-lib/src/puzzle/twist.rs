@@ -134,7 +134,7 @@ impl Twist {
     Eq,
     Hash,
     strum::EnumIter,
-    strum_macros::EnumString,
+    strum::EnumString,
 )]
 #[repr(u8)]
 #[allow(clippy::upper_case_acronyms)]

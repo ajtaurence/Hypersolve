@@ -1,9 +1,7 @@
 use super::*;
 
 /// Axes `X`, `Y`, `Z`, and `W`
-#[derive(
-    Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, strum_macros::EnumIter, Hash,
-)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, strum::EnumIter, Hash)]
 #[repr(u8)]
 pub enum Axis {
     #[default]

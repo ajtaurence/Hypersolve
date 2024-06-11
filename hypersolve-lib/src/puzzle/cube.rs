@@ -133,7 +133,7 @@ impl Cube {
                 .into_array()
                 .map(|i| PieceLocation::from_index(PieceLocationIndex(i as u8)))
                 .map(|piece_loc| PieceLocation(piece_loc.0.permute(axis_perm) * transform_signs))
-                .map(|piece_loc| piece_loc.index().0 as usize),
+                .map(|piece_loc| piece_loc.index().0),
         )
         .inverse();
 
