@@ -1,4 +1,1 @@
-*/target
-/hypersolve-lib/const_data
-*/.vscode
-*.bat
+**/target

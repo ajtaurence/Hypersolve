@@ -6,7 +6,7 @@ fn scramble_benchmark(c: &mut Criterion) {
     c.bench_function("scramble", |b| {
         b.iter(|| {
             let index = CubeIndex::try_from(rand::random::<u128>() % N_CUBE_STATES).unwrap();
-            find_scramble(black_box(index))
+            new_scramble(black_box(index))
         })
     });
 }

@@ -1,0 +1,20 @@
+[package]
+name = "hypersolve-core"
+version = "0.1.0"
+edition = "2021"
+
+[profile.release]
+opt-level = 3
+codegen-units = 1
+lto = true
+overflow-checks = false
+panic = "abort"
+
+[dependencies]
+static_assertions = "1.1.0"
+hypersolve-base = { path = "hypersolve-base" }
+
+[build-dependencies]
+const-gen = "1.6.4"
+itertools = "0.13.0"
+hypersolve-base = { path = "hypersolve-base" }
