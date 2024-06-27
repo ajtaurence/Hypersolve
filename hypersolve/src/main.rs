@@ -62,6 +62,7 @@ enum Commands {
     /// Generates a true random state scramble
     Scramble {
         /// Use a custom 128 bit hexadecimal verification key (32 hexadecimal characters) instead of generating a random key
+        /// Use a custom 128 bit hexadecimal verification key (32 hexadecimal characters) instead of generating a random key
         #[arg(short, long)]
         key: Option<HexString<16>>,
 
@@ -74,6 +75,7 @@ enum Commands {
         /// 128 bit hexadecimal verification key
         key: HexString<16>,
 
+        /// Scramble moves
         /// Scramble moves
         scramble: Vec<Twist>       
     },
