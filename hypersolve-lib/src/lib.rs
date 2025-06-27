@@ -1,3 +1,4 @@
+mod bound;
 mod cube_index;
 mod data_loading;
 mod depth_queue;
