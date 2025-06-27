@@ -117,12 +117,10 @@ impl From<NotationEnum> for Notation {
 
 fn main() {
     // Setup human panic
-    human_panic::setup_panic!(Metadata {
-        name: capitalize_first_letter(env!("CARGO_PKG_NAME")).into(),
-        version: env!("CARGO_PKG_VERSION").into(),
-        authors: env!("CARGO_PKG_AUTHORS").into(),
-        homepage: "https://github.com/ajtaurence/Hypersolve/issues".into(),
-    });
+    human_panic::setup_panic!(human_panic::Metadata::new(capitalize_first_letter(env!("CARGO_PKG_NAME")), env!("CARGO_PKG_VERSION"))
+        .authors(env!("CARGO_PKG_AUTHORS"))
+        .homepage("https://github.com/ajtaurence/Hypersolve/issues")
+    );
 
     // make windows colorize text correctly
     #[cfg(windows)]
