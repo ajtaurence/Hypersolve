@@ -19,25 +19,15 @@ impl K4 {
     pub const IDENTITY: K4 = K4::E;
 
     /// # Safety
-    /// This is safe as long as `0 <= discriminant <= 4`
+    /// This is safe as long as `0 <= discriminant <= 3`
     #[inline(always)]
     pub const unsafe fn from_repr_unchecked(discriminant: u8) -> Self {
-        match K4::from_repr(discriminant) {
-            Some(val) => val,
-            None => std::hint::unreachable_unchecked(),
-        }
+        std::mem::transmute(discriminant)
     }
 
     pub const fn group_mul(a: Self, b: Self) -> Self {
-        use K4::*;
-        match (a, b) {
-            (E, val) => val,
-            (val, E) => val,
-            (U1, U1) | (U2, U2) | (U3, U3) => E,
-            (U1, U2) | (U2, U1) => U3,
-            (U1, U3) | (U3, U1) => U2,
-            (U2, U3) | (U3, U2) => U1,
-        }
+        // SAFETY: XOR operation preserves discriminant range
+        unsafe { Self::from_repr_unchecked(a as u8 ^ b as u8) }
     }
 
     #[inline(always)]
@@ -46,13 +36,8 @@ impl K4 {
     }
 
     pub const fn to_a4(self) -> super::A4 {
-        use super::A4;
-        match self {
-            K4::E => A4::E,
-            K4::U1 => A4::U1,
-            K4::U2 => A4::U2,
-            K4::U3 => A4::U3,
-        }
+        // SAFETY: self has max value of 3 so self * 3 has max value of 9 <= 11
+        unsafe { super::A4::from_repr_unchecked(self as u8 * 3) }
     }
 }
 

@@ -25,6 +25,13 @@ pub enum A4 {
 }
 
 impl A4 {
+    /// # Safety
+    /// This is safe as long as `0 <= discriminant <= 11`
+    #[inline(always)]
+    pub const unsafe fn from_repr_unchecked(discriminant: u8) -> Self {
+        std::mem::transmute(discriminant)
+    }
+
     pub const IDENTITY: Self = A4::E;
 
     pub const fn group_mul(a: A4, b: A4) -> A4 {
@@ -55,34 +62,17 @@ impl A4 {
 
     pub const fn from_k4_c3(k4: K4, c3: C3) -> Self {
         // Make sure this is consistent with C3::from(A4)
-        match (k4, c3) {
-            (K4::E, c3_val) => c3_val.to_a4(),
-            (k4_val, C3::E) => k4_val.to_a4(),
-            (K4::U1, C3::A) => Self::R8,
-            (K4::U1, C3::AA) => Self::R6,
-            (K4::U2, C3::A) => Self::R5,
-            (K4::U2, C3::AA) => Self::R3,
-            (K4::U3, C3::A) => Self::R4,
-            (K4::U3, C3::AA) => Self::R7,
-        }
+
+        // SAFETY: k4 <= 3 and c3 <= 2 so 3 * k4 + c3 <= 11
+        unsafe { Self::from_repr_unchecked(3 * k4 as u8 + c3 as u8) }
     }
 
     pub const fn inverse(self) -> Self {
         use A4::*;
-        match self {
-            E => E,
-            R1 => R2,
-            R2 => R1,
-            U1 => U1,
-            R8 => R3,
-            R6 => R4,
-            U2 => U2,
-            R5 => R7,
-            R3 => R8,
-            U3 => U3,
-            R4 => R6,
-            R7 => R5,
-        }
+
+        const INVERSE_LOOKUP: [A4; 12] = [E, R2, R1, U1, R3, R4, U2, R7, R8, U3, R6, R5];
+
+        INVERSE_LOOKUP[self as u8 as usize]
     }
 
     /// # Safety
@@ -128,22 +118,13 @@ impl A4 {
     }
 
     pub const fn to_c3(self) -> super::C3 {
-        use A4::*;
-        match self {
-            E | U1 | U2 | U3 => C3::E,
-            R1 | R8 | R5 | R4 => C3::A,
-            R2 | R6 | R3 | R7 => C3::AA,
-        }
+        // SAFETY: % 3 ensures discriminant <= 2
+        unsafe { super::C3::from_repr_unchecked(self as u8 % 3) }
     }
 
     pub const fn to_k4(self) -> super::K4 {
-        use A4::*;
-        match self {
-            E | R1 | R2 => K4::E,
-            U1 | R8 | R6 => K4::U1,
-            U2 | R5 | R3 => K4::U2,
-            U3 | R4 | R7 => K4::U3,
-        }
+        // SAFETY: self <= 11 so self / 3 <= 3
+        unsafe { super::K4::from_repr_unchecked(self as u8 / 3) }
     }
 }
 
