@@ -30,16 +30,12 @@ where
 {
     type Item = (I::Item, N);
     fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            let next_move = self.next_move_iter.next()?;
-
+        self.next_move_iter.find_map(|next_move| {
             let new_node = self.current_node.apply_move(next_move);
 
             let lower_bound = new_node.get_depth_bound() as usize;
 
-            if self.remaining_len > lower_bound {
-                return Some((next_move, new_node));
-            }
-        }
+            (self.remaining_len > lower_bound).then_some((next_move, new_node))
+        })
     }
 }
