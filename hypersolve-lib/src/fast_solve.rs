@@ -33,8 +33,8 @@ fn fast_solve(
 
         // check if the solution will be longer than the shortest solution
         if phase1_sol.len() >= shortest_sol_length.load(Ordering::Relaxed) {
-            // Set the solution length to zero so the other threads will stop
-            shortest_sol_length.store(0, Ordering::Relaxed);
+            // Tell the threads to stop
+            search_flag.store(false, Ordering::Relaxed);
             return;
         }
 
@@ -157,14 +157,20 @@ impl FastSolutionIterator {
 impl Iterator for FastSolutionIterator {
     type Item = (TwistSequence, usize);
     fn next(&mut self) -> Option<Self::Item> {
-        // tell the threads to start searching
-        self.search_flag.store(true, Ordering::Release);
-        for thread in &self.thread_handles {
-            // If any of the threads have finished then none of them will find any more solutions
-            if thread.is_finished() {
-                return None;
-            }
+        // If any of the threads have finished then all remaining bounds are in the receiver (if any)
+        if self
+            .thread_handles
+            .iter()
+            .any(|thread| thread.is_finished())
+        {
+            return self.sol_receive.recv().ok();
+        }
 
+        // Otherwise tell the threads to start searching
+        self.search_flag.store(true, Ordering::Release);
+
+        // Unpark all the threads
+        for thread in &self.thread_handles {
             thread.thread().unpark()
         }
 
