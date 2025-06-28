@@ -163,7 +163,7 @@ impl Iterator for FastSolutionIterator {
             .iter()
             .any(|thread| thread.is_finished())
         {
-            return self.sol_receive.recv().ok();
+            return self.sol_receive.try_recv().ok();
         }
 
         // Otherwise tell the threads to start searching
